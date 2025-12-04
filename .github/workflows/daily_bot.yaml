@@ -1,0 +1,35 @@
+name: Daily Stock Analyst Bot
+
+on:
+  schedule:
+    # ตั้งเวลาแบบ UTC (ไทยคือ UTC+7)
+    # ถ้าอยากได้ 08:00 ไทย ต้องตั้งเป็น 01:00 UTC
+    - cron: '0 1 * * *' 
+  workflow_dispatch: # เพื่อให้กดปุ่มรันมือได้ด้วย (สำหรับการเทส)
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Bot Script
+        env:
+          # ดึงค่า Key จาก GitHub Secrets (เดี๋ยวไปตั้งค่ากัน)
+          ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_GROUP_ID: ${{ secrets.LINE_GROUP_ID }}
+        run: |
+          python main.py
