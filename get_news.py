@@ -2,11 +2,14 @@
 import time
 import requests
 # 👇 Import เพิ่ม: get_current_price และ save_prediction
-from services import analyze_content, send_line_push, get_current_price, ALPHA_VANTAGE_API_KEY, IMPACT_THRESHOLD
-from db_handler import save_prediction 
-
+from services import analyze_content, send_line_push, get_current_price, get_market_context, ALPHA_VANTAGE_API_KEY, IMPACT_THRESHOLD
+from db_handler import save_prediction
 def run_news_bot():
     print("\n📰 --- STARTING NEWS BOT ---")
+
+    print("🌍 Fetching Global Market Context...")
+    market_context = get_market_context()
+    print(f"   Context: {market_context}")
     
     try:
         with open("target_ticker.txt", "r") as f:
@@ -29,7 +32,7 @@ def run_news_bot():
 
         if feed:
             # วิเคราะห์
-            analysis = analyze_content("NEWS", ticker, feed[:5])
+            analysis = analyze_content("NEWS", ticker, feed[:5], market_context=market_context)
             
             score = analysis.get('impact_score', 0) if analysis else 0
 

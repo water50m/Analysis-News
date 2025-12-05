@@ -19,16 +19,22 @@ import verify_bot
 class TestServices(unittest.TestCase):
     """ทดสอบ services.py (สมองกลาง)"""
 
-    @patch('services.requests.get')
-    def test_get_current_price(self, mock_get):
-        """ทดสอบดึงราคาหุ้น"""
-        # จำลอง Response จาก Alpha Vantage
-        mock_response = {
-            "Global Quote": {"05. price": "150.50"}
-        }
-        mock_get.return_value.json.return_value = mock_response
+    # เปลี่ยนจาก patch requests เป็น patch yfinance
+    @patch('services.yf.Ticker') 
+    def test_get_current_price(self, MockTicker):
+        """ทดสอบดึงราคาหุ้น (Mock yfinance)"""
+        
+        # 1. สร้างตัวแทน (Mock Instance)
+        mock_instance = MockTicker.return_value
+        
+        # 2. กำหนดค่าที่ต้องการให้มันตอบกลับมา (150.50)
+        # จำลอง structure: Ticker("TSLA").fast_info.last_price
+        mock_instance.fast_info.last_price = 150.50
 
+        # 3. เรียกใช้งานฟังก์ชันจริง
         price = services.get_current_price("TSLA")
+        
+        # 4. ตรวจสอบ
         self.assertEqual(price, 150.50)
         print("✅ [Services] get_current_price: ผ่าน")
 
@@ -62,7 +68,7 @@ class TestServices(unittest.TestCase):
         # เช็คว่า Prompt ที่ส่งให้ AI มีคำว่า "MISTAKES" อยู่จริงไหม (พิสูจน์ Feedback Loop)
         args, _ = MockModel.return_value.generate_content.call_args
         prompt_sent = args[0]
-        self.assertIn("Current Accuracy: 50.0%", prompt_sent)
+        self.assertIn("Your Current Accuracy: 50.0%", prompt_sent)
         self.assertIn("Here are your past MISTAKES", prompt_sent)
         
         print("✅ [Services] analyze_content (with Feedback Loop): ผ่าน")

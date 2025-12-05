@@ -25,13 +25,22 @@ def run_verification():
         if end_price == 0:
             print(f"⚠️ ดึงราคา {ticker} ไม่ได้ ข้ามไปก่อน")
             continue
-            
+        
+
         # 2. ตรวจคำตอบ (Logic ง่ายๆ)
+
+        # คำนวณ % การเปลี่ยนแปลง
+        percent_change = ((end_price - start_price) / start_price) * 100
+
         actual_direction = "NEUTRAL"
-        if end_price > start_price:
+        
+        # ต้องขึ้น/ลง เกิน 0.5% ถึงจะนับว่าเป็นเทรนด์ (กรอง Noise)
+        if percent_change > 0.5:
             actual_direction = "UP"
-        elif end_price < start_price:
+        elif percent_change < -0.5:
             actual_direction = "DOWN"
+        else:
+            actual_direction = "NEUTRAL" # ถือว่าราคานิ่งๆ
             
         # AI ทายถูกไหม?
         is_correct = (predicted == actual_direction)
