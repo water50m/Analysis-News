@@ -1,6 +1,10 @@
 requests
-google-generativeai>=0.4.0
 python-dotenv
 supabase
 yfinance
 pandas
+
+# สามารเลือกใช้ อันใดอันหนึ่งได้ตามต้องการ
+google-generativeai>=0.4.0
+openai
+anthropic

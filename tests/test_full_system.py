@@ -73,6 +73,150 @@ class TestServices(unittest.TestCase):
         
         print("✅ [Services] analyze_content (with Feedback Loop): ผ่าน")
 
+    def setUp(self):
+        # เตรียมคำตอบจำลองจาก AI (Mock Response)
+        self.mock_json_response = {
+            "impact_score": 8,
+            "predicted_direction": "UP",
+            "summary_message": "Test Summary",
+            "reason": "Test Reason"
+        }
+    
+    # ==================================================
+    # 🧪 ทดสอบ 1: ถ้าตั้งค่าเป็น GEMINI (Default)
+    # ==================================================
+    @patch('services.AI_PROVIDER', 'gemini') # จำลองว่า .env ตั้งเป็น gemini
+    @patch('services.call_gemini')           # ดักจับฟังก์ชัน call_gemini
+    @patch('services.call_openai')           # ดักจับฟังก์ชัน call_openai
+    def test_switch_to_gemini(self, mock_openai, mock_gemini):
+        """ทดสอบว่าถ้าเลือก Gemini ระบบต้องเรียก call_gemini เท่านั้น"""
+        
+        # Setup: ให้ call_gemini คืนค่าได้
+        mock_gemini.return_value = self.mock_json_response
+        
+        # Action: เรียกใช้งานฟังก์ชันหลัก
+        services.analyze_content("NEWS", "TSLA", [{"title": "test"}])
+        
+        # Assert: เช็คผลลัพธ์
+        mock_gemini.assert_called_once()  # ✅ ต้องถูกเรียก
+        mock_openai.assert_not_called()   # ❌ ต้อง "ไม่" ถูกเรียก
+        print("✅ [Switching] Provider='gemini' -> เรียก Gemini ถูกต้อง")
+
+    # ==================================================
+    # 🧪 ทดสอบ 2: ถ้าตั้งค่าเป็น OPENAI
+    # ==================================================
+    @patch('services.AI_PROVIDER', 'openai') # จำลองว่า .env ตั้งเป็น openai
+    @patch('services.call_gemini')
+    @patch('services.call_openai')
+    def test_switch_to_openai(self, mock_openai, mock_gemini):
+        """ทดสอบว่าถ้าเลือก OpenAI ระบบต้องเรียก call_openai เท่านั้น"""
+        
+        mock_openai.return_value = self.mock_json_response
+        
+        services.analyze_content("NEWS", "TSLA", [{"title": "test"}])
+        
+        mock_openai.assert_called_once()  # ✅ ต้องถูกเรียก
+        mock_gemini.assert_not_called()   # ❌ ต้อง "ไม่" ถูกเรียก
+        print("✅ [Switching] Provider='openai' -> เรียก OpenAI ถูกต้อง")
+
+    # ==================================================
+    # 🧪 ทดสอบ 3: ทดสอบฟังก์ชันภายใน (Mock Library จริง)
+    # ==================================================
+    @patch('services.genai.GenerativeModel')
+    def test_internal_call_gemini(self, MockGenModel):
+        """ทดสอบไส้ในฟังก์ชัน call_gemini ว่าคุยกับ Google library ถูกไหม"""
+        
+        # Setup Mock ของ Google
+        mock_instance = MockGenModel.return_value
+        mock_instance.generate_content.return_value.text = json.dumps(self.mock_json_response)
+        
+        # เรียกใช้ฟังก์ชันย่อยตรงๆ
+        result = services.call_gemini("test prompt")
+        
+        self.assertEqual(result['impact_score'], 8)
+        print("✅ [Internal] call_gemini ทำงานถูกต้อง")
+
+    @patch('services.openai_client') # Mock ตัว Client ของ OpenAI
+    def test_internal_call_openai(self, mock_client):
+        """ทดสอบไส้ในฟังก์ชัน call_openai (กรณีมี client)"""
+        
+        # ถ้าไม่มี client (เช่นไม่ได้ใส่ key) ฟังก์ชันจะ return None
+        if services.openai_client is None:
+            # เราแกล้งยัด Mock เข้าไปแทน None เพื่อให้เทสผ่าน
+            services.openai_client = mock_client 
+        
+        # Setup Mock ของ OpenAI Response (ซับซ้อนหน่อยตาม structure จริง)
+        mock_completion = MagicMock()
+        mock_completion.choices[0].message.content = json.dumps(self.mock_json_response)
+        mock_client.chat.completions.create.return_value = mock_completion
+        
+        # เรียกใช้
+        result = services.call_openai("test prompt")
+        
+        self.assertEqual(result['impact_score'], 8)
+        print("✅ [Internal] call_openai ทำงานถูกต้อง")    
+
+# ==================================================
+    # 🧪 ทดสอบ 4: ถ้าตั้งค่าเป็น CLAUDE (ใหม่ ✨)
+    # ==================================================
+    @patch('services.AI_PROVIDER', 'claude')
+    @patch('services.call_gemini')
+    @patch('services.call_openai')
+    @patch('services.call_claude')
+    def test_switch_to_claude(self, mock_claude, mock_openai, mock_gemini):
+        """ทดสอบว่าถ้าเลือก Claude ระบบต้องเรียก call_claude เท่านั้น"""
+        
+        mock_claude.return_value = self.mock_json_response
+        
+        services.analyze_content("NEWS", "TSLA", [{"title": "test"}])
+        
+        mock_claude.assert_called_once()
+        mock_gemini.assert_not_called()
+        mock_openai.assert_not_called()
+        print("✅ [Switching] Provider='claude' -> เรียก Claude ถูกต้อง")
+
+    # ==================================================
+    # 🧪 ทดสอบ 5: Internal Gemini Logic
+    # ==================================================
+    @patch('services.genai.GenerativeModel')
+    def test_internal_call_gemini(self, MockGenModel):
+        mock_instance = MockGenModel.return_value
+        mock_instance.generate_content.return_value.text = json.dumps(self.mock_json_response)
+        
+        result = services.call_gemini("test prompt")
+        self.assertEqual(result['impact_score'], 8)
+        print("✅ [Internal] call_gemini ทำงานถูกต้อง")
+
+    # ==================================================
+    # 🧪 ทดสอบ 6: Internal Claude Logic (ใหม่ ✨)
+    # ==================================================
+    # Patch ไปที่ library anthropic ที่ถูก import ใน services.py
+    # (ใช้ MagicMock เผื่อเครื่องที่รันยังไม่ได้ลง lib anthropic จริง)
+    @patch('services.anthropic.Anthropic') 
+    def test_internal_call_claude(self, MockAnthropic):
+        """ทดสอบไส้ในฟังก์ชัน call_claude ว่าแกะ JSON ถูกไหม"""
+        
+        # 1. Setup Mock Client
+        mock_client = MockAnthropic.return_value
+        
+        # 2. Setup Mock Response (Claude return เป็น object ที่ซับซ้อนหน่อย)
+        # message.content[0].text
+        mock_message_obj = MagicMock()
+        # จำลองว่า Claude ตอบมามีข้อความเกริ่นนำนิดหน่อย (Test Logic การตัดคำ)
+        raw_text = "Here is the JSON: " + json.dumps(self.mock_json_response)
+        mock_message_obj.content = [MagicMock(text=raw_text)]
+        
+        mock_client.messages.create.return_value = mock_message_obj
+        
+        # 3. Inject Fake Key (เพื่อให้ผ่านเงื่อนไข if not API_KEY)
+        with patch('services.ANTHROPIC_API_KEY', 'sk-fake-key'):
+            result = services.call_claude("test prompt")
+        
+        # 4. Assert
+        self.assertIsNotNone(result)
+        self.assertEqual(result['impact_score'], 8)
+        print("✅ [Internal] call_claude ทำงานถูกต้อง (JSON Parsing)")
+
 
 class TestDBHandler(unittest.TestCase):
     """ทดสอบ db_handler.py (Supabase)"""

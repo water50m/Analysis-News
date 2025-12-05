@@ -1,25 +1,108 @@
 import os
 import json
 import requests
-import google.generativeai as genai
 import yfinance as yf
 import pandas as pd
 from dotenv import load_dotenv
 from db_handler import get_accuracy_stats, get_learning_examples
 
+# สามารถเลือก import ค่าย AI ที่ต้องการใช้
+import google.generativeai as genai
+from openai import OpenAI
+import anthropic
+
 load_dotenv()
 
 # --- Configuration ---
+AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").lower()
 ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_GROUP_ID = os.getenv("LINE_GROUP_ID")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 IMPACT_THRESHOLD = 5
 
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+BASE_URL = os.getenv("BASE_URL") # เผื่อใช้ DeepSeek
+openai_client = None
+if OPENAI_API_KEY:
+    openai_client = OpenAI(
+        api_key=OPENAI_API_KEY,
+        base_url=BASE_URL if BASE_URL else None
+    )
+# ============================
+# 🤖 AI Provider Functions (แยกการทำงานแต่ละค่าย)
+# ============================
+def call_claude(prompt):
+    if not ANTHROPIC_API_KEY: return None
+    
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    
+    try:
+        message = client.messages.create(
+            model="claude-3-5-sonnet-20240620", # รุ่นเทพสุด
+            max_tokens=1024,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        # Claude ส่งกลับเป็น Text เราต้องดึงออกมาแปลง JSON เอง
+        content = message.content[0].text
+        
+        # บางที Claude จะเกริ่นนำ เราต้องหาปีกกา JSON
+        json_start = content.find('{')
+        json_end = content.rfind('}') + 1
+        json_str = content[json_start:json_end]
+        
+        return json.loads(json_str)
+        
+    except Exception as e:
+        print(f"❌ Claude Error: {e}")
+        return None
+
+def call_gemini(prompt):
+    """เรียกใช้ Google Gemini"""
+    models = ['models/gemini-2.5-pro',  'models/gemini-1.5-pro', 'models/gemini-2.0-flash', 'models/gemini-1.5-flash']
+    
+    for model_name in models:
+        try:
+            model = genai.GenerativeModel(model_name)
+            res = model.generate_content(
+                prompt, 
+                generation_config={"response_mime_type": "application/json"}
+            )
+            return json.loads(res.text)
+        except:
+            continue
+    return None
+
+def call_openai(prompt):
+    """เรียกใช้ OpenAI (GPT-4o) หรือ DeepSeek"""
+    if not openai_client: return None
+    
+    # เลือกโมเดล (ถ้าใช้ DeepSeek ให้แก้เป็น 'deepseek-chat')
+    model_name = "gpt-4o" if not BASE_URL else "deepseek-chat"
+    
+    try:
+        response = openai_client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": "You are a helpful financial assistant. You output JSON only."},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"} # บังคับ JSON
+        )
+        content = response.choices[0].message.content
+        return json.loads(content)
+    except Exception as e:
+        print(f"❌ OpenAI Error: {e}")
+        return None
 
 # ============================
 # 📤 Function: ส่ง LINE
@@ -136,7 +219,7 @@ def send_line_push(message):
         pass
     
 def analyze_content(source_type, topic, content_data, market_context=""):
-    print(f"🧠 กำลังวิเคราะห์ {source_type} ของ {topic}...")
+    print(f"🧠 กำลังวิเคราะห์ {source_type} ของ {topic} โดยใช้ [{AI_PROVIDER.upper()}]...")
 
     technical_info = get_technical_signals(topic) if source_type == "NEWS" else "N/A"
 
@@ -232,30 +315,21 @@ def analyze_content(source_type, topic, content_data, market_context=""):
             "reason": "<Reason>"
         }}
         """
-
-    # 6. ส่งเข้า Gemini (Fail-over Logic)
-    models = ['models/gemini-2.5-pro',  'models/gemini-1.5-pro', 'models/gemini-2.0-flash', 'models/gemini-1.5-flash']
+    result = None
     
-    for model_name in models:
-        try:
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(
-                prompt, 
-                generation_config={"response_mime_type": "application/json"}
-            )
-            
-            result = json.loads(response.text)
-            
-            # ป้องกัน AI ส่ง List กลับมา
-            if isinstance(result, list):
-                if len(result) > 0: result = result[0]
-                else: return None
+    if AI_PROVIDER == "openai":
+        result = call_openai(prompt)
+    elif AI_PROVIDER == "gemini":
+        result = call_gemini(prompt)
+    elif AI_PROVIDER == "claude":   # <--- เพิ่มตรงนี้
+        result = call_claude(prompt)
+    else:
+        # Fallback: ถ้าตั้งชื่อผิด ให้ลอง Gemini ก่อน
+        result = call_gemini(prompt)
 
-            return result
-            
-        except Exception as e:
-            # print(f"⚠️ Model {model_name} failed: {e}") # Uncomment ถ้าอยากดู error
-            continue
-            
-    print("❌ All AI models failed.")
-    return None
+    # ป้องกัน AI ส่ง List กลับมา
+    if isinstance(result, list):
+        if len(result) > 0: result = result[0]
+        else: return None
+
+    return result
