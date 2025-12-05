@@ -1,14 +1,13 @@
-name: Daily Stock Analyst Bot
+name: 📰 Daily Stock News Bot
 
 on:
   schedule:
-    # ตั้งเวลาแบบ UTC (ไทยคือ UTC+7)
-    # ถ้าอยากได้ 08:00 ไทย ต้องตั้งเป็น 01:00 UTC
-    - cron: '0 1 * * *' 
-  workflow_dispatch: # เพื่อให้กดปุ่มรันมือได้ด้วย (สำหรับการเทส)
+    # 01:00 UTC = 08:00 AM Thailand
+    - cron: '0 1 * * *'
+  workflow_dispatch: # ปุ่มกดรันเอง (Manual Trigger)
 
 jobs:
-  run-bot:
+  run-news:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,12 +23,12 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Run Bot Script
+      - name: Run News Script
         env:
-          # ดึงค่า Key จาก GitHub Secrets (เดี๋ยวไปตั้งค่ากัน)
+          # ใส่เฉพาะ Key ที่ต้องใช้กับข่าว
           ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_GROUP_ID: ${{ secrets.LINE_GROUP_ID }}
         run: |
-          python main.py
+          python main_news.py
