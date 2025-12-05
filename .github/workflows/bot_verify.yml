@@ -1,0 +1,35 @@
+name: 👩‍🏫 Daily Verification Bot
+
+on:
+  schedule:
+    # 13:00 UTC = 20:00 PM Thailand (ตลาดหุ้นเปิด/ปิดพอดี)
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+
+jobs:
+  run-verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Verification Script
+        env:
+          # ใช้ Alpha Vantage เช็คราคา + Line แจ้งผล + Supabase อัปเดตผล
+          ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_GROUP_ID: ${{ secrets.LINE_GROUP_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          python verify_bot.py

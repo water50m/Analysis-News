@@ -1,13 +1,13 @@
-name: 🐦 Hourly Social Monitor
+name: 📰 Daily Stock News Bot
 
 on:
   schedule:
-    # รันทุกๆ ต้นชั่วโมง (เช่น 09:00, 10:00, 11:00...)
-    - cron: '0 * * * *'
+    # 01:00 UTC = 08:00 AM Thailand
+    - cron: '0 1 * * *'
   workflow_dispatch: # ปุ่มกดรันเอง
 
 jobs:
-  run-social:
+  run-news:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,18 +17,21 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.10'
 
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
 
-      - name: Run Social Script
+      - name: Run News Script
         env:
-          # ใส่เฉพาะ Key ที่ต้องใช้กับ Twitter
-          TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN }}
+          # Key เดิม
+          ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_GROUP_ID: ${{ secrets.LINE_GROUP_ID }}
+          # Key ใหม่ (Supabase) ⚠️
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          python main_social.py
+          python main_news.py
