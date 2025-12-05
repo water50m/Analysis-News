@@ -3,6 +3,7 @@ import requests
 import json
 from dotenv import load_dotenv
 
+
 # โหลดค่าจาก .env
 load_dotenv()
 

@@ -1,7 +1,8 @@
 # main_social.py
 import time
 import requests
-from services import analyze_content, send_line_push, TWITTER_BEARER_TOKEN, IMPACT_THRESHOLD
+from services import analyze_content, send_line_push, get_current_price, TWITTER_BEARER_TOKEN, IMPACT_THRESHOLD
+from db_handler import save_prediction
 
 def run_social_bot():
     print("\n🐦 --- STARTING SOCIAL BOT ---")
@@ -36,33 +37,42 @@ def run_social_bot():
             tweets = []
             
         if tweets:
-            # ส่งไปวิเคราะห์
             analysis = analyze_content("TWEET", user['handle'], tweets)
+            score = analysis.get('impact_score', 0) if analysis else 0
             
-            if analysis and analysis.get('impact_score', 0) > IMPACT_THRESHOLD:
+            if analysis and score > IMPACT_THRESHOLD:
+                # 1. หาว่ากระทบหุ้นตัวไหน? (ใช้ที่ AI บอก หรือใช้ Default)
+                detected_ticker = analysis.get('specific_stock')
+                if not detected_ticker or detected_ticker == "GENERAL":
+                    detected_ticker = user['default_stock']
+
+                # 2. ดึงราคาของหุ้นตัวนั้น
+                current_price = get_current_price(detected_ticker)
+
+                # 3. บันทึกลง Supabase 💾
+                save_prediction(
+                    symbol=detected_ticker,
+                    source_type="TWEET",
+                    summary=analysis.get('summary_message'),
+                    direction=analysis.get('predicted_direction', 'NEUTRAL'),
+                    score=score,
+                    current_price=current_price
+                )
                 
-                # ดึงข้อมูลใหม่ที่ AI วิเคราะห์มาได้
-                sector = analysis.get('affected_sector', 'General')
-                ticker = analysis.get('specific_stock', user['default_stock'])
-                score = analysis.get('impact_score', 0)
-                summary = analysis.get('summary_message', '')
-                
-                # 🎨 DESIGN: รูปแบบข้อความสไตล์ Social (ต่างจากข่าว)
+                # 4. ส่ง LINE
+                direction_emoji = "📈" if analysis.get('predicted_direction') == "UP" else "📉"
                 msg = f"⚡ FLASH UPDATE 🐦\n"
                 msg += f"🗣️ ต้นทาง: {user['handle']}\n"
-                msg += f"🎯 กระทบ: {ticker} ({sector})\n"
+                msg += f"🎯 กระทบ: {detected_ticker} ({analysis.get('affected_sector')})\n"
+                msg += f"🔮 AI ทาย: {analysis.get('predicted_direction')} {direction_emoji}\n"
                 msg += f"🌊 ความแรง: {'🔴'*score} ({score}/10)\n"
-                msg += f"────────────────\n"
-                msg += f"{summary}\n"
-                msg += f"────────────────\n"
-                msg += f"💡 มุมมอง AI: {analysis.get('reason')}"
+                msg += f"💰 ราคาตอนทาย: ${current_price}\n"
+                msg += f"────────────────\n{analysis.get('summary_message')}\n────────────────\n💡 {analysis.get('reason')}"
                 
                 send_line_push(msg)
-                print(f"✅ Alert sent for {user['handle']}")
+                print(f"✅ Alert sent & Saved for {user['handle']} -> {detected_ticker}")
             else:
-                print(f"💤 Impact low ({analysis.get('impact_score') if analysis else 0})")
-        else:
-            print("⚠️ No tweets found")
+                print(f"💤 Impact low ({score})")
             
         time.sleep(2)
 

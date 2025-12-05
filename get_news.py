@@ -1,13 +1,13 @@
 # main_news.py
 import time
 import requests
-# 👇 Import ฟังก์ชันจากไฟล์ services.py มาใช้
-from services import analyze_content, send_line_push, ALPHA_VANTAGE_API_KEY, IMPACT_THRESHOLD
+# 👇 Import เพิ่ม: get_current_price และ save_prediction
+from services import analyze_content, send_line_push, get_current_price, ALPHA_VANTAGE_API_KEY, IMPACT_THRESHOLD
+from db_handler import save_prediction 
 
 def run_news_bot():
     print("\n📰 --- STARTING NEWS BOT ---")
     
-    # อ่านรายชื่อหุ้น
     try:
         with open("target_ticker.txt", "r") as f:
             tickers = [line.strip() for line in f if line.strip()]
@@ -18,7 +18,6 @@ def run_news_bot():
     for i, ticker in enumerate(tickers):
         print(f"🔍 Checking News for: {ticker}")
         
-        # 1. ดึงข่าว (Logic เฉพาะของ Alpha Vantage)
         url = f"https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={ticker}&sort=LATEST&limit=10&apikey={ALPHA_VANTAGE_API_KEY}"
         
         try:
@@ -28,22 +27,41 @@ def run_news_bot():
             print(f"❌ API Error: {e}")
             feed = []
 
-        # 2. ส่งไปวิเคราะห์ (ใช้ฟังก์ชันกลาง)
         if feed:
-            # ส่งแค่ 5 ข่าวล่าสุด
+            # วิเคราะห์
             analysis = analyze_content("NEWS", ticker, feed[:5])
             
-            if analysis and analysis['impact_score'] > IMPACT_THRESHOLD:
-                msg = f"📰 ข่าวหุ้น: {ticker}\n🔥 ความแรง: {analysis['impact_score']}/10\n\n{analysis['summary_message']}\n\n💡 {analysis['reason']}"
+            score = analysis.get('impact_score', 0) if analysis else 0
+
+            if analysis and score > IMPACT_THRESHOLD:
+                # 1. ดึงราคาปัจจุบัน (เพื่อเอาไว้ตรวจคำตอบทีหลัง)
+                current_price = get_current_price(ticker)
+                
+                # 2. บันทึกลง Supabase 💾
+                save_prediction(
+                    symbol=ticker,
+                    source_type="NEWS",
+                    summary=analysis.get('summary_message'),
+                    direction=analysis.get('predicted_direction', 'NEUTRAL'),
+                    score=score,
+                    current_price=current_price
+                )
+
+                # 3. ส่ง LINE
+                direction_emoji = "📈" if analysis.get('predicted_direction') == "UP" else "📉"
+                msg = f"📰 ข่าวหุ้น: {ticker}\n"
+                msg += f"🔮 AI ทาย: {analysis.get('predicted_direction')} {direction_emoji}\n"
+                msg += f"🔥 ความแรง: {score}/10\n"
+                msg += f"💰 ราคาตอนทาย: ${current_price}\n"
+                msg += f"------------------\n{analysis['summary_message']}\n------------------\n💡 {analysis['reason']}"
+                
                 send_line_push(msg)
-                print(f"✅ Alert sent for {ticker}")
+                print(f"✅ Alert sent & Saved for {ticker}")
             else:
-                score = analysis.get('impact_score', 0) if analysis else 0
                 print(f"💤 Impact low ({score})")
         else:
             print("⚠️ No news found")
 
-        # Rate Limit
         if i < len(tickers) - 1:
             print("⏳ Waiting 15s...")
             time.sleep(15)
