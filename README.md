@@ -1,52 +1,71 @@
-🤖 AI Stock Analyst & Trader Apprentice (เด็กฝึกงานเทรด AI)
-ระบบบอทอัจฉริยะที่ทำหน้าที่เป็น "ผู้ช่วยนักวิเคราะห์ส่วนตัว" โดยใช้ Google Gemini อ่านข่าวและทวีตคนดัง เพื่อทำนายทิศทางราคาหุ้น (UP/DOWN) พร้อมระบบ Feedback Loop ที่ทำให้ AI เรียนรู้จากความผิดพลาดของตัวเองเพื่อให้เก่งขึ้นทุกวัน
+# 🤖 AI Stock Analyst & Trader Apprentice (เด็กฝึกงานเทรด AI)
 
-✨ ฟีเจอร์หลัก (Key Features)
-🧠 Smart Analysis with Feedback Loop: ไม่ใช่แค่อ่านข่าว แต่ AI จะได้รับ "ผลสอบเก่า" (สถิติความแม่นยำ + กรณีที่เคยทายผิด) ไปพร้อมกับ Prompt เพื่อให้วิเคราะห์ได้แม่นยำขึ้น (In-Context Learning)
+ระบบบอทอัจฉริยะที่ทำหน้าที่เป็น **ผู้ช่วยนักวิเคราะห์ส่วนตัว**
+โดยใช้ AI อ่านข่าวและโซเชียล (Twitter/X) เพื่อทำนายทิศทางราคาหุ้น (**UP / DOWN**)
+พร้อมระบบ **Feedback Loop** ที่ทำให้ AI เรียนรู้จากความผิดพลาดและเก่งขึ้นทุกวัน
 
-📰 Dual Mode:
+> ⚠️ โปรเจกต์นี้เพื่อการศึกษา ไม่ใช่คำแนะนำทางการเงิน
 
-News Bot: เฝ้าข่าวหุ้นรายตัวจาก Alpha Vantage (รันวันละครั้ง)
+---
 
-Social Bot: เฝ้าทวีตคนดัง (Elon Musk, Fed, SEC) และระบุหุ้นที่ได้รับผลกระทบอัตโนมัติ (รันทุกชั่วโมง)
+## ✨ ฟีเจอร์หลัก (Key Features)
 
-🔮 Prediction & Verification: AI จะฟันธงทิศทางราคา (UP/DOWN) และมีระบบตรวจคำตอบ (verify_bot.py) เพื่อวัดผลความแม่นยำจากราคาตลาดจริง
+- 🧠 **Smart Analysis with Feedback Loop**  
+  AI จะได้รับสถิติความแม่นยำย้อนหลังและกรณีที่เคยทายผิดไปพร้อมกับ Prompt  
+  เพื่อปรับปรุงการวิเคราะห์แบบ In-Context Learning
 
-☁️ Cloud Database: เก็บประวัติการทำนายทั้งหมดบน Supabase (PostgreSQL) ข้อมูลไม่หายแม้รันบน GitHub Actions
+- 📰 **News Bot**  
+  วิเคราะห์ข่าวหุ้นรายตัวจาก Alpha Vantage (แนะนำรันวันละครั้ง)
 
-📱 Real-time Alert: แจ้งเตือนเข้า LINE Group พร้อมสรุปภาษาไทยและเหตุผลประกอบ
+- 🐦 **Social Bot**  
+  วิเคราะห์ทวีตจากบุคคลสำคัญ เช่น Elon Musk, Fed, SEC  
+  พร้อมระบุหุ้นที่ได้รับผลกระทบโดยอัตโนมัติ (รันทุกชั่วโมง)
 
-📂 โครงสร้างโปรเจกต์ (Project Structure)
-Plaintext
+- 🔮 **Prediction & Verification**  
+  ทำนายทิศทางราคา (UP / DOWN) และมีบอทตรวจคำตอบจากราคาจริงในตลาด
 
+- ☁️ **Cloud Database (Supabase)**  
+  เก็บประวัติการทำนายทั้งหมดบน PostgreSQL  
+  รองรับการรันผ่าน GitHub Actions โดยข้อมูลไม่หาย
+
+- 📱 **LINE Real-time Alert**  
+  แจ้งเตือนเข้า LINE Group พร้อมสรุปภาษาไทยและเหตุผลประกอบ
+
+---
+
+## 📂 โครงสร้างโปรเจกต์ (Project Structure)
+
+```text
 my_stock_bot/
-├── main_news.py        # 📰 บอทข่าว (Entry Point)
-├── main_social.py      # 🐦 บอทโซเชียล (Entry Point)
-├── verify_bot.py       # 👩‍🏫 บอทตรวจการบ้าน (รันวันละครั้งเพื่อเช็คผล)
-├── services.py         # 🧠 สมองกลาง (AI Logic, LINE, Price Fetch)
-├── db_handler.py       # 💾 ตัวจัดการ Database (Supabase)
-├── tests/              # 🧪 โฟลเดอร์เก็บไฟล์ Test
+├── main_news.py        # บอทวิเคราะห์ข่าว
+├── main_social.py      # บอทวิเคราะห์โซเชียล
+├── verify_bot.py       # บอทตรวจผลการทำนาย
+├── services.py         # Logic กลาง (AI, LINE, ราคา)
+├── db_handler.py       # จัดการ Supabase
+├── tests/              # Unit & Integration Tests
 │   ├── test_full_system.py
 │   └── ...
-├── .github/workflows/  # 🤖 คำสั่งรันอัตโนมัติบน GitHub Actions
-├── .env                # 🔑 เก็บ API Keys (ห้ามอัปโหลด)
-├── target_ticker.txt   # 🎯 รายชื่อหุ้นเป้าหมาย
-└── requirements.txt    # 📦 รายชื่อ Library
+├── .github/workflows/  # GitHub Actions
+├── .env                # เก็บ API Keys (ห้ามอัปโหลด)
+├── target_ticker.txt   # รายชื่อหุ้นเป้าหมาย
+└── requirements.txt    # รายชื่อ Library
+
 🚀 การติดตั้ง (Installation)
-1. เตรียม Environment
-Bash
-
-# ติดตั้ง Library ที่จำเป็น
+1. ติดตั้ง Library
 pip install -r requirements.txt
-2. ตั้งค่าไฟล์ .env
-สร้างไฟล์ .env และใส่ค่า Key ต่างๆ ดังนี้:
 
-ข้อมูลโค้ด
+
+💡 ถ้า copy คำสั่งนี้ไป จะไม่มีคำว่า bash ติดไปแน่นอน
+
+2. ตั้งค่าไฟล์ .env
+
+สร้างไฟล์ .env แล้วใส่ค่าดังนี้
 
 # Financial Data
 ALPHA_VANTAGE_API_KEY=your_key
 
 # AI Engine
+AI_PROVIDER=gemini
 GEMINI_API_KEY=your_key
 
 # Social Data (ถ้าไม่มีจะเข้า Demo Mode)
@@ -58,132 +77,108 @@ LINE_GROUP_ID=Cxxxxxxxxxxxxxxxxxxxxxxx
 
 # Database (Supabase)
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your_service_role_key_here
-⚠️ สำคัญ: SUPABASE_KEY ต้องใช้ Service Role (Secret) เท่านั้นเพื่อให้บอทมีสิทธิ์เขียนข้อมูล
+SUPABASE_KEY=your_service_role_key
+
+
+⚠️ สำคัญ:
+SUPABASE_KEY ต้องเป็น Service Role Key เท่านั้น
 
 3. ตั้งค่ารายชื่อหุ้น
-แก้ไขไฟล์ target_ticker.txt:
 
-Plaintext
+แก้ไขไฟล์ target_ticker.txt
 
 TSLA
 NVDA
 AAPL
 BTC
+
 🎮 การใช้งาน (Usage)
-1. รันบอทข่าว (News Bot)
-สำหรับวิเคราะห์ข่าวหุ้นรายตัวตามลิสต์ (แนะนำรันวันละ 1 ครั้ง ช่วงเช้า)
-
-Bash
-
+📰 รันบอทข่าว
 python main_news.py
-2. รันบอทโซเชียล (Social Bot)
-สำหรับวิเคราะห์ทวีตคนดัง (แนะนำรันทุก 1-2 ชั่วโมง)
 
-Bash
 
+แนะนำรันวันละครั้ง (ช่วงเช้า)
+
+🐦 รันบอทโซเชียล
 python main_social.py
-3. รันระบบตรวจสอบผล (Verification)
-รันวันละครั้ง (เช่น 24 ชม. หลังข่าวออก) เพื่อดูว่าที่ AI ทายไว้นั้นถูกหรือผิด
 
-Bash
 
+แนะนำรันทุก 1–2 ชั่วโมง
+
+👩‍🏫 รันระบบตรวจผลการทำนาย
 python verify_bot.py
-ระบบจะดึงรายการ PENDING จาก Supabase -> เช็คราคาปัจจุบัน -> อัปเดตผลสอบ -> แจ้งผลทาง LINE
+
+
+ระบบจะ:
+
+ดึงรายการที่ยังไม่ตรวจจาก Supabase
+
+เช็คราคาตลาดจริง
+
+อัปเดตผลถูก/ผิด
+
+แจ้งผลเข้า LINE
 
 🧪 การทดสอบระบบ (Testing)
-โปรเจกต์นี้มาพร้อมชุด Test ครบวงจร (Unit & Integration Test)
 
-Bash
+รันทดสอบทั้งหมด
 
-# รัน Test ทั้งหมดในโฟลเดอร์ tests
 python -m unittest discover tests
 
-# หรือรันเฉพาะไฟล์ System Test
+
+หรือทดสอบทั้งระบบ
+
 python tests/test_full_system.py
-🤖 การทำงานอัตโนมัติ (Automation)
-ระบบรองรับ GitHub Actions เต็มรูปแบบ:
 
-bot_news.yml: รัน main_news.py ทุกวันเวลา 08:00 น.
+🤖 Automation (GitHub Actions)
 
-bot_social.yml: รัน main_social.py ทุกชั่วโมง
+รองรับการรันอัตโนมัติ:
 
-วิธีตั้งค่า:
+bot_news.yml → รันทุกวัน 08:00
+
+bot_social.yml → รันทุกชั่วโมง
+
+วิธีตั้งค่า
 
 Push โค้ดขึ้น GitHub
 
-ไปที่ Settings > Secrets and variables > Actions
+ไปที่ Settings → Secrets and variables → Actions
 
-ใส่ Key ทั้งหมดจากไฟล์ .env ลงไปใน Repository Secrets
+เพิ่มค่าทั้งหมดจาก .env ลงใน Repository Secrets
 
-🤖 การตั้งค่าและสลับ AI Model (Multi-Provider Support)
-ระบบนี้ถูกออกแบบมาให้ยืดหยุ่น คุณสามารถสลับไปใช้ AI ค่ายอื่นได้ทันทีโดยไม่ต้องแก้โค้ดหลัก รองรับทั้ง Google Gemini, OpenAI (ChatGPT), และ DeepSeek
-
-1. ติดตั้ง Library เพิ่มเติม
-หากต้องการใช้ OpenAI หรือ DeepSeek ต้องติดตั้งไลบรารีเพิ่มใน requirements.txt:
-
-Plaintext
-
-openai
-แล้วรันคำสั่ง:
-
-Bash
-
-pip install -r requirements.txt
-2. การตั้งค่าไฟล์ .env (วิธีสลับ AI)
-คุณสามารถเลือกค่าย AI ได้โดยการเปลี่ยนตัวแปร AI_PROVIDER ในไฟล์ .env
-
-🟢 แบบที่ 1: ใช้ Google Gemini (Default)
-ประหยัด รวดเร็ว และฟรี (Free Tier)
-
-ข้อมูลโค้ด
-
+🤖 การสลับ AI Model (Multi-Provider Support)
+ใช้ Google Gemini (ค่าเริ่มต้น)
 AI_PROVIDER=gemini
-GEMINI_API_KEY=ใส่_key_ของคุณ
-🟢 แบบที่ 2: ใช้ OpenAI (GPT-4o / GPT-3.5)
-ฉลาดและเสถียรที่สุด (ต้องเติมเงิน)
+GEMINI_API_KEY=your_key
 
-ข้อมูลโค้ด
-
+ใช้ OpenAI (GPT-4 / GPT-3.5)
 AI_PROVIDER=openai
-OPENAI_API_KEY=sk-xxxx_ใส่_key_ของคุณ
-# ไม่ต้องใส่ OPENAI_BASE_URL
-🟢 แบบที่ 3: ใช้ DeepSeek (ผ่าน OpenAI Client)
-ฉลาดเทียบเท่า GPT-4 แต่ราคาถูกกว่ามาก
+OPENAI_API_KEY=sk-xxxx
 
-ข้อมูลโค้ด
-
+ใช้ DeepSeek (ผ่าน OpenAI Client)
 AI_PROVIDER=openai
-OPENAI_API_KEY=sk-xxxx_ใส่_key_ของ_deepseek
+OPENAI_API_KEY=sk-deepseek
 OPENAI_BASE_URL=https://api.deepseek.com
-3. หากต้องการเพิ่ม/แก้ไขโค้ด AI (Advanced)
-หากคุณต้องการเพิ่มค่ายอื่นที่ไม่รองรับ (เช่น Anthropic Claude) หรือต้องการปรับ Logic การเรียก AI ให้ไปแก้ไขที่ไฟล์ services.py
 
-จุดที่ต้องแก้ไข:
+🔧 เพิ่ม AI Provider อื่น (Advanced)
 
-เพิ่มฟังก์ชันเรียก API: สร้างฟังก์ชันใหม่สำหรับค่ายนั้นๆ เช่น call_claude(prompt)
+แก้ไขไฟล์ services.py
 
-Python
-
-# services.py
 def call_claude(prompt):
-    # ... เขียนโค้ดเชื่อมต่อ API ตรงนี้ ...
-    return json_result
-เพิ่มเงื่อนไขในฟังก์ชัน analyze_content: ค้นหาจุดที่มีการเช็ค AI_PROVIDER แล้วเพิ่มเงื่อนไขเข้าไป
+    # เขียนโค้ดเชื่อมต่อ API ที่นี่
+    return result
 
-Python
 
-# services.py -> def analyze_content(...)
+และเพิ่มเงื่อนไขในฟังก์ชัน analyze_content
 
-# ...
 if AI_PROVIDER == "openai":
     result = call_openai(prompt)
 elif AI_PROVIDER == "gemini":
     result = call_gemini(prompt)
-elif AI_PROVIDER == "claude":   # <--- เพิ่มตรงนี้
+elif AI_PROVIDER == "claude":
     result = call_claude(prompt)
-# ...
-
 
 📜 Disclaimer
-โปรเจกต์นี้จัดทำขึ้นเพื่อการศึกษาและการวิเคราะห์ข้อมูลด้วย AI เบื้องต้นเท่านั้น ไม่ใช่คำแนะนำทางการเงิน ผู้ลงทุนควรใช้วิจารณญาณและศึกษาข้อมูลเพิ่มเติมก่อนตัดสินใจลงทุน
+
+โปรเจกต์นี้จัดทำขึ้นเพื่อการศึกษาและการทดลองด้าน AI เท่านั้น
+ไม่ใช่คำแนะนำทางการเงิน ผู้ลงทุนควรใช้วิจารณญาณก่อนตัดสินใจลงทุน
