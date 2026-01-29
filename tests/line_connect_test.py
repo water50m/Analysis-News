@@ -2,6 +2,7 @@ import os
 import requests
 import json
 from dotenv import load_dotenv
+from services import send_line_push
 
 
 # โหลดค่าจาก .env
@@ -77,4 +78,4 @@ def test_line_connection():
         print(f"\n❌ Error ทางเทคนิค: {e}")
 
 if __name__ == "__main__":
-    test_line_connection()
+    send_line_push("🤖 สวัสดีครับ! นี่คือข้อความทดสอบจาก Python Bot \n(ถ้าเห็นข้อความนี้ แสดงว่าระบบพร้อมใช้งานแล้วครับ---)")

@@ -133,6 +133,16 @@ def get_current_price(ticker):
         return float(data["Global Quote"]["05. price"])
     except:
         return 0.0
+# ============================
+# 💰 Function: ดึงราคาปัจจุบัน (yfinance)
+# ============================
+# def get_current_price(ticker):
+#     if not ticker or ticker == "GENERAL": return 0.0
+#     try:
+#         # ใช้ fast_info หรือ history(period='1d') ก็ได้
+#         return yf.Ticker(ticker).fast_info.last_price
+#     except:
+#         return 0.0
 
 # ============================
 # 🧠 Function: วิเคราะห์ด้วย AI 
@@ -195,16 +205,7 @@ def get_technical_signals(ticker):
     except Exception as e:
         return f"Error: {e}"
     
-# ============================
-# 💰 Function: ดึงราคาปัจจุบัน (yfinance)
-# ============================
-def get_current_price(ticker):
-    if not ticker or ticker == "GENERAL": return 0.0
-    try:
-        # ใช้ fast_info หรือ history(period='1d') ก็ได้
-        return yf.Ticker(ticker).fast_info.last_price
-    except:
-        return 0.0
+
 
 def send_line_push(message):
     url = "https://api.line.me/v2/bot/message/push"
@@ -333,3 +334,4 @@ def analyze_content(source_type, topic, content_data, market_context=""):
         else: return None
 
     return result
+

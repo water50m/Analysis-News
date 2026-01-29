@@ -20,7 +20,7 @@ def run_verification():
         predicted = item['predicted_direction']
         
         # 1. เช็คราคาปัจจุบัน (End Price)
-        end_price = get_current_price(ticker, ALPHA_VANTAGE_API_KEY)
+        end_price = get_current_price(ticker)
         
         if end_price == 0:
             print(f"⚠️ ดึงราคา {ticker} ไม่ได้ ข้ามไปก่อน")
