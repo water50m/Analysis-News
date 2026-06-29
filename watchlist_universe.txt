@@ -1,0 +1,42 @@
+# Watchlist Universe สำหรับ Screener
+# คัดเฉพาะหุ้น/sector ที่มีประวัติ "ซิ่ง" บ่อย (high beta, low float, news-sensitive)
+# เพิ่ม/ลบ ticker ได้ตามต้องการ — ไฟล์นี้ไม่ใช่ตัวที่ส่งเข้า analysis ตรงๆ
+# (screener.py จะคัด top movers จากในนี้ไปเขียนทับ target_ticker.txt อีกที)
+
+# EV
+TSLA
+RIVN
+LCID
+NIO
+XPEV
+LI
+
+# AI / Semiconductor (high beta)
+NVDA
+SMCI
+AMD
+PLTR
+SOUN
+ARM
+MARA
+
+# Biotech (เก็งกำไรสูง ข่าว trial ขยับแรง)
+ATAI
+AXSM
+SRPT
+MRNA
+
+# Crypto-related
+COIN
+MSTR
+RIOT
+HOOD
+
+# Meme / High-beta
+GME
+AMC
+
+# Mega-cap (เป็น baseline เทียบ ปกติไม่ซิ่งแต่บางวันก็มีข่าวใหญ่)
+META
+AAPL
+AMZN

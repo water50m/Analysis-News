@@ -1,101 +1,205 @@
 import os
-from supabase import create_client, Client
+import psycopg2
+import psycopg2.extras
+import psycopg2.pool
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# ตั้งค่า Client
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_KEY")
+DB_HOST = os.environ.get("DB_HOST")
+DB_PORT = os.environ.get("DB_PORT", "5432")
+DB_USER = os.environ.get("DB_USER")
+DB_NAME = os.environ.get("DB_NAME")
+DB_PASS = os.environ.get("DB_PASS")
 
-if not url or not key:
-    print("❌ Error: ไม่พบ SUPABASE_URL หรือ SUPABASE_KEY")
-    supabase = None
-else:
-    supabase: Client = create_client(url, key)
+_pool = None
 
-def save_prediction(symbol, source_type, summary, direction, score, current_price):
-    """บันทึกคำทำนายขึ้น Cloud"""
-    if not supabase: return
 
-    data = {
-        "symbol": symbol,
-        "source_type": source_type,
-        "news_summary": summary,
-        "predicted_direction": direction,
-        "confidence_score": score,
-        "start_price": current_price,
-        "status": "PENDING"
-        # prediction_date กับ created_at ทาง Supabase จะใส่เวลาปัจจุบันให้เอง
-    }
-    
+def _get_pool():
+    global _pool
+    if _pool is None and all([DB_HOST, DB_USER, DB_NAME, DB_PASS]):
+        _pool = psycopg2.pool.SimpleConnectionPool(
+            1, 10,
+            host=DB_HOST,
+            port=DB_PORT,
+            user=DB_USER,
+            password=DB_PASS,
+            dbname=DB_NAME,
+        )
+    return _pool
+
+CREATE_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS predictions (
+    id SERIAL PRIMARY KEY,
+    symbol TEXT,
+    source_type TEXT,
+    news_summary TEXT,
+    predicted_direction TEXT,
+    confidence_score INTEGER,
+    start_price NUMERIC,
+    end_price NUMERIC,
+    is_correct BOOLEAN,
+    status TEXT DEFAULT 'PENDING',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE predictions ADD COLUMN IF NOT EXISTS target_price NUMERIC;
+ALTER TABLE predictions ADD COLUMN IF NOT EXISTS stop_loss_price NUMERIC;
+ALTER TABLE predictions ADD COLUMN IF NOT EXISTS time_horizon_days INTEGER;
+ALTER TABLE predictions ADD COLUMN IF NOT EXISTS confluence_count INTEGER;
+"""
+
+
+def get_connection():
+    """ดึง connection จาก pool (ไม่ได้เปิดใหม่ทุกครั้ง) ใช้คู่กับ release_connection() เสมอ"""
+    pool = _get_pool()
+    if pool is None:
+        print("❌ Error: ไม่พบค่า DB_HOST/DB_USER/DB_NAME/DB_PASS")
+        return None
     try:
-        supabase.table("predictions").insert(data).execute()
-        print(f"☁️ Supabase: Saved {symbol} ({direction})")
+        return pool.getconn()
     except Exception as e:
-        print(f"❌ Supabase Error: {e}")
+        print(f"❌ DB Connection Error: {e}")
+        return None
 
-def get_pending_predictions():
-    """ดึงรายการที่รอตรวจ (PENDING)"""
-    if not supabase: return []
-    
+
+def release_connection(conn):
+    """คืน connection กลับ pool แทนการปิดทิ้ง (ห้ามเรียก conn.close() ตรงๆ)"""
+    if conn is None:
+        return
+    pool = _get_pool()
+    if pool is not None:
+        pool.putconn(conn)
+
+
+def init_db():
+    """สร้างตาราง predictions ถ้ายังไม่มี"""
+    conn = get_connection()
+    if not conn:
+        return
     try:
-        # ดึงเฉพาะสถานะ PENDING
-        response = supabase.table("predictions").select("*").eq("status", "PENDING").execute()
-        return response.data
+        with conn, conn.cursor() as cur:
+            cur.execute(CREATE_TABLE_SQL)
+        print("✅ DB: predictions table ready")
     except Exception as e:
-        print(f"❌ Error fetching pending: {e}")
+        print(f"❌ DB Init Error: {e}")
+    finally:
+        release_connection(conn)
+
+
+def save_prediction(symbol, source_type, summary, direction, score, current_price,
+                     target_price=None, stop_loss_price=None, time_horizon_days=None,
+                     confluence_count=None):
+    """บันทึกคำทำนายลง Postgres"""
+    conn = get_connection()
+    if not conn:
+        return
+
+    sql = """
+        INSERT INTO predictions
+            (symbol, source_type, news_summary, predicted_direction, confidence_score, start_price,
+             target_price, stop_loss_price, time_horizon_days, confluence_count, status)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'PENDING')
+    """
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute(sql, (symbol, source_type, summary, direction, score, current_price,
+                               target_price, stop_loss_price, time_horizon_days, confluence_count))
+        print(f"☁️ DB: Saved {symbol} ({direction})")
+    except Exception as e:
+        print(f"❌ DB Error: {e}")
+    finally:
+        release_connection(conn)
+
+
+def get_due_predictions():
+    """ดึงรายการ PENDING ที่ครบ time_horizon_days แล้ว (ไม่เช็คก่อนกรอบเวลาที่ AI กำหนดเอง)
+    ถ้าไม่มี time_horizon_days (AI ไม่ได้ตอบมา) ใช้ 1 วันเป็นค่า fallback เดิม"""
+    conn = get_connection()
+    if not conn:
         return []
+
+    sql = """
+        SELECT * FROM predictions
+        WHERE status = 'PENDING'
+          AND created_at + (COALESCE(time_horizon_days, 1) || ' days')::interval <= NOW()
+    """
+    try:
+        with conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(sql)
+            return [dict(row) for row in cur.fetchall()]
+    except Exception as e:
+        print(f"❌ Error fetching due predictions: {e}")
+        return []
+    finally:
+        release_connection(conn)
+
 
 def update_verification(id, end_price, is_correct):
     """อัปเดตผลสอบ"""
-    if not supabase: return
+    conn = get_connection()
+    if not conn:
+        return
 
-    data = {
-        "end_price": end_price,
-        "is_correct": is_correct,
-        "status": "VERIFIED"
-    }
-    
+    sql = """
+        UPDATE predictions
+        SET end_price = %s, is_correct = %s, status = 'VERIFIED'
+        WHERE id = %s
+    """
     try:
-        supabase.table("predictions").update(data).eq("id", id).execute()
-        print(f"☁️ Supabase: Verified ID {id}")
+        with conn, conn.cursor() as cur:
+            cur.execute(sql, (end_price, is_correct, id))
+        print(f"☁️ DB: Verified ID {id}")
     except Exception as e:
         print(f"❌ Error updating: {e}")
+    finally:
+        release_connection(conn)
+
 
 def get_accuracy_stats():
     """ดึงสถิติความแม่นยำ"""
-    if not supabase: return 0, 0
-    
+    conn = get_connection()
+    if not conn:
+        return 0, 0
+
     try:
-        # ดึงจำนวนทั้งหมดที่ตรวจแล้ว
-        total_res = supabase.table("predictions").select("id", count="exact").eq("status", "VERIFIED").execute()
-        total = total_res.count
-        
-        # ดึงจำนวนที่ถูก
-        correct_res = supabase.table("predictions").select("id", count="exact").eq("is_correct", True).execute()
-        correct = correct_res.count
-        
+        with conn, conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM predictions WHERE status = 'VERIFIED'")
+            total = cur.fetchone()[0]
+
+            cur.execute("SELECT COUNT(*) FROM predictions WHERE is_correct = TRUE")
+            correct = cur.fetchone()[0]
+
         return total, correct
     except Exception as e:
         print(f"❌ Error stats: {e}")
         return 0, 0
+    finally:
+        release_connection(conn)
+
 
 def get_learning_examples(limit=3):
     """ดึงตัวอย่างที่ทายผิดมาสอน AI"""
-    if not supabase: return []
-    
+    conn = get_connection()
+    if not conn:
+        return []
+
+    sql = """
+        SELECT symbol, news_summary, predicted_direction, start_price, end_price, id
+        FROM predictions
+        WHERE status = 'VERIFIED' AND is_correct = FALSE
+        ORDER BY id DESC
+        LIMIT %s
+    """
     try:
-        # select * from predictions where is_correct = false order by id desc limit 3
-        response = supabase.table("predictions")\
-            .select("symbol, news_summary, predicted_direction, start_price, end_price")\
-            .eq("status", "VERIFIED")\
-            .eq("is_correct", False)\
-            .order("id", desc=True)\
-            .limit(limit)\
-            .execute()
-            
-        return response.data
+        with conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(sql, (limit,))
+            return [dict(row) for row in cur.fetchall()]
     except Exception as e:
         print(f"❌ Error examples: {e}")
         return []
+    finally:
+        release_connection(conn)
+
+
+if __name__ == "__main__":
+    init_db()

@@ -5,6 +5,8 @@ on:
     # 14:00 UTC = 21:00 น. เวลาไทย (ก่อนตลาดเปิด 30 นาที)
     # 1-5 = จันทร์ ถึง ศุกร์ เท่านั้น
     - cron: '0 14 * * 1-5'
+    # 19:00 UTC = 02:00 น. เวลาไทย (กลางช่วงตลาด US เปิด ~2-3 ชม. หลังเปิด)
+    - cron: '0 19 * * 1-5'
   workflow_dispatch: # ปุ่มกดรันเอง
 
 jobs:
@@ -26,13 +28,18 @@ jobs:
 
       - name: Run News Script
         env:
-          # Key เดิม
           ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_GROUP_ID: ${{ secrets.LINE_GROUP_ID }}
-          # Key ใหม่ (Supabase) ⚠️
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_PASS: ${{ secrets.DB_PASS }}
         run: |
           python get_news.py

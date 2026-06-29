@@ -5,6 +5,9 @@ import yfinance as yf
 import pandas as pd
 from dotenv import load_dotenv
 from db_handler import get_accuracy_stats, get_learning_examples
+from get_fundamentals import get_fundamental_context, get_fundamental_signal_score
+from get_macro import get_macro_context, get_macro_signal_score
+from signal_engine import compute_confluence, get_news_sentiment_score
 
 # สามารถเลือก import ค่าย AI ที่ต้องการใช้
 import google.generativeai as genai
@@ -169,42 +172,59 @@ def get_market_context():
     except Exception as e:
         print(f"⚠️ Market Context Error: {e}")
         return "Market data unavailable."
-        
+
+    context_str += "\n" + get_macro_context()
+
     return context_str.strip()
 
 # ============================
-# 📈 NEW: ฟังก์ชันดึงเทคนิคอล (RSI, SMA) จาก yfinance
+# 📈 ฟังก์ชันดึงเทคนิคอล (RSI, SMA) จาก yfinance
 # ============================
-def get_technical_signals(ticker):
-    """คำนวณ RSI และ Price vs SMA50"""
-    if not ticker or ticker == "GENERAL": return "N/A"
-    
+def _fetch_technical_data(ticker):
+    """ดึงราคา/SMA50/RSI ดิบ คืนเป็น dict (ใช้ทั้งทำ string โชว์ และคำนวณ score)"""
     try:
         # ดึงข้อมูลย้อนหลัง 3 เดือน (เพื่อให้คำนวณ SMA50 ได้)
         df = yf.Ticker(ticker).history(period="3mo")
-        
-        if len(df) < 50: return "Not enough data"
-        
-        # 1. คำนวณ SMA 50
+
+        if len(df) < 50:
+            return None
+
         sma50 = df['Close'].rolling(window=50).mean().iloc[-1]
         current_price = df['Close'].iloc[-1]
-        
-        # 2. คำนวณ RSI 14 (สูตรมาตรฐาน)
+
         delta = df['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rs = gain / loss
         rsi = 100 - (100 / (1 + rs)).iloc[-1]
-        
-        # สรุปผล
-        trend = "BULLISH (Above SMA50)" if current_price > sma50 else "BEARISH (Below SMA50)"
-        rsi_status = "Overbought (>70)" if rsi > 70 else "Oversold (<30)" if rsi < 30 else "Neutral"
-        
-        return f"Price: ${current_price:.2f} | SMA50: ${sma50:.2f} ({trend}) | RSI(14): {rsi:.1f} ({rsi_status})"
-        
+
+        return {"price": current_price, "sma50": sma50, "rsi": rsi}
     except Exception as e:
-        return f"Error: {e}"
-    
+        print(f"⚠️ Technical Data Error: {e}")
+        return None
+
+
+def get_technical_analysis(ticker):
+    """ดึงข้อมูลเทคนิคอลครั้งเดียว คืน (string สำหรับ prompt, score -2..+2 สำหรับ confluence)"""
+    if not ticker or ticker == "GENERAL":
+        return "N/A", 0
+
+    data = _fetch_technical_data(ticker)
+    if not data:
+        return "Not enough data", 0
+
+    trend = "BULLISH (Above SMA50)" if data["price"] > data["sma50"] else "BEARISH (Below SMA50)"
+    rsi_status = "Overbought (>70)" if data["rsi"] > 70 else "Oversold (<30)" if data["rsi"] < 30 else "Neutral"
+    text = f"Price: ${data['price']:.2f} | SMA50: ${data['sma50']:.2f} ({trend}) | RSI(14): {data['rsi']:.1f} ({rsi_status})"
+
+    score = 1 if data["price"] > data["sma50"] else -1
+    if data["rsi"] < 30:
+        score += 1
+    elif data["rsi"] > 70:
+        score -= 1
+
+    return text, max(-2, min(2, score))
+
 
 
 def send_line_push(message):
@@ -222,7 +242,20 @@ def send_line_push(message):
 def analyze_content(source_type, topic, content_data, market_context=""):
     print(f"🧠 กำลังวิเคราะห์ {source_type} ของ {topic} โดยใช้ [{AI_PROVIDER.upper()}]...")
 
-    technical_info = get_technical_signals(topic) if source_type == "NEWS" else "N/A"
+    confluence = None
+    if source_type == "NEWS":
+        # ticker คือ topic ตรงๆ จึงคำนวณ confluence score แบบ deterministic ได้ก่อนเรียก AI
+        technical_info, technical_score = get_technical_analysis(topic)
+        fundamental_info = get_fundamental_context(topic)
+        fundamental_score = get_fundamental_signal_score(topic)
+        macro_score = get_macro_signal_score()
+        news_score = get_news_sentiment_score(content_data)
+
+        confluence = compute_confluence(technical_score, fundamental_score, macro_score, news_score)
+    else:
+        # TWEET: ยังไม่รู้ ticker ที่แท้จริงจนกว่า AI จะระบุ specific_stock กลับมา
+        # จึงคำนวณ confluence แบบ deterministic ก่อนเรียกไม่ได้ ปล่อยให้ AI ประเมินเอง
+        technical_info, fundamental_info = "N/A", "N/A"
 
     # 1. ดึงข้อมูลการเรียนรู้ (Feedback Loop)
     try:
@@ -278,7 +311,10 @@ def analyze_content(source_type, topic, content_data, market_context=""):
         2. Prediction: Will the affected asset go UP or DOWN in 24h?
         3. Specific Stock: Identify the Ticker Symbol (e.g. TSLA, DOGE, BTC).
         4. Sector: e.g. EV, AI, Crypto.
-        5. Summary (Thai): Informal/Social tone.
+        5. Target Price: realistic price level if the move plays out within the time horizon.
+        6. Stop Loss Price: level that invalidates this thesis.
+        7. Time Horizon (days): how many days this prediction is expected to play out (1-30).
+        8. Summary (Thai): Informal/Social tone.
 
         Response JSON Format ONLY:
         {{
@@ -286,6 +322,9 @@ def analyze_content(source_type, topic, content_data, market_context=""):
             "predicted_direction": "UP/DOWN/NEUTRAL",
             "specific_stock": "<Ticker Symbol>",
             "affected_sector": "<Sector>",
+            "target_price": <float or null>,
+            "stop_loss_price": <float or null>,
+            "time_horizon_days": <int>,
             "summary_message": "<Thai Summary>",
             "reason": "<Reason>"
         }}
@@ -299,25 +338,37 @@ def analyze_content(source_type, topic, content_data, market_context=""):
         {technical_info}
         (RSI > 70 = Sell Risk, RSI < 30 = Buy Opportunity. Price > SMA50 = Uptrend.)
 
+        [FUNDAMENTALS] (For {topic})
+        {fundamental_info}
+
+        [COMPUTED CONFLUENCE SIGNAL] (deterministic, calculated from the data above before you were asked)
+        {chr(10).join(confluence['breakdown'])}
+        Net Score: {confluence['total']:+d} | Bias: {confluence['direction']} | Agreement: {confluence['confluence_count']}/4 categories
+
         Task: Analyze news for ticker: {topic}
         [NEWS]
         {json.dumps(content_data)}
 
-        Combine Fundamental (News) + Technical (RSI/SMA) + Market Context.
-        1. Impact Score (1-10).
-        2. Prediction: UP or DOWN in 24h?
-        3. Summary (Thai): Formal tone.
+        Use the COMPUTED CONFLUENCE SIGNAL above as your primary evidence for direction — it is calculated, not guessed.
+        Only override its direction if the [NEWS] content contains a strong, specific reason to disagree (explain why in "reason").
+        1. Prediction: UP or DOWN in 24h? (default to the confluence bias unless overridden)
+        2. Target Price: realistic price level if the move plays out within the time horizon.
+        3. Stop Loss Price: level that invalidates this thesis.
+        4. Time Horizon (days): how many days this prediction is expected to play out (1-30).
+        5. Summary (Thai): Formal tone.
 
         Response JSON Format ONLY:
         {{
-            "impact_score": <int>,
             "predicted_direction": "UP/DOWN/NEUTRAL",
+            "target_price": <float or null>,
+            "stop_loss_price": <float or null>,
+            "time_horizon_days": <int>,
             "summary_message": "<Thai Summary>",
             "reason": "<Reason>"
         }}
         """
     result = None
-    
+
     if AI_PROVIDER == "openai":
         result = call_openai(prompt)
     elif AI_PROVIDER == "gemini":
@@ -332,6 +383,15 @@ def analyze_content(source_type, topic, content_data, market_context=""):
     if isinstance(result, list):
         if len(result) > 0: result = result[0]
         else: return None
+
+    if result is None:
+        return None
+
+    if confluence is not None:
+        # ทับ impact_score ด้วยค่าที่คำนวณ deterministic เสมอ (ไม่พึ่ง AI เดาเอง)
+        result["impact_score"] = confluence["strength"]
+        result["confluence_count"] = confluence["confluence_count"]
+        result.setdefault("predicted_direction", confluence["direction"])
 
     return result
 

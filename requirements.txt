@@ -1,8 +1,9 @@
 requests
 python-dotenv
-supabase
+psycopg2-binary
 yfinance
 pandas
+apscheduler
 
 # สามารเลือกใช้ อันใดอันหนึ่งได้ตามต้องการ
 google-generativeai>=0.4.0

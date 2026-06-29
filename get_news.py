@@ -67,7 +67,7 @@ def run_news_bot():
 
             if analysis and score > IMPACT_THRESHOLD:
                 current_price = get_current_price(ticker)
-                
+
                 # บันทึกลง DB
                 save_prediction(
                     symbol=ticker,
@@ -75,15 +75,21 @@ def run_news_bot():
                     summary=analysis.get('summary_message'),
                     direction=analysis.get('predicted_direction', 'NEUTRAL'),
                     score=score,
-                    current_price=current_price
+                    current_price=current_price,
+                    target_price=analysis.get('target_price'),
+                    stop_loss_price=analysis.get('stop_loss_price'),
+                    time_horizon_days=analysis.get('time_horizon_days'),
+                    confluence_count=analysis.get('confluence_count')
                 )
 
                 # ส่ง LINE
                 direction_emoji = "📈" if analysis.get('predicted_direction') == "UP" else "📉"
                 msg = f"📰 ข่าวหุ้น: {ticker}\n"
                 msg += f"🔮 AI ทาย: {analysis.get('predicted_direction')} {direction_emoji}\n"
-                msg += f"🔥 ความแรง: {score}/10\n"
+                msg += f"🔥 ความแรง: {score}/10 (Confluence {analysis.get('confluence_count', 'N/A')}/4)\n"
                 msg += f"💰 ราคา: ${current_price}\n"
+                msg += f"🎯 เป้าหมาย: ${analysis.get('target_price', 'N/A')} | 🛑 ตัดขาดทุน: ${analysis.get('stop_loss_price', 'N/A')}\n"
+                msg += f"⏱️ กรอบเวลา: {analysis.get('time_horizon_days', 'N/A')} วัน\n"
                 msg += f"------------------\n{analysis.get('summary_message')}\n------------------\n💡 {analysis.get('reason')}"
                 
                 send_line_push(msg)

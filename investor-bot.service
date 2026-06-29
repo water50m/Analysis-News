@@ -1,0 +1,17 @@
+[Unit]
+Description=Investor Project - Screener + Analysis + Verify Scheduler
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+# แก้ User/WorkingDirectory ให้ตรงกับเซิร์ฟเวอร์จริงก่อน deploy
+User=investor
+WorkingDirectory=/opt/invester-project
+ExecStart=/opt/invester-project/.venv/bin/python /opt/invester-project/scheduler.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

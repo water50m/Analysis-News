@@ -1,15 +1,15 @@
 # verify_bot.py
 import requests
 from services import send_line_push, get_current_price, ALPHA_VANTAGE_API_KEY
-from db_handler import get_pending_predictions, update_verification, get_accuracy_stats
+from db_handler import get_due_predictions, update_verification, get_accuracy_stats
 
 def run_verification():
-    print("🕵️‍♂️ เริ่มตรวจสอบผลการทำนายของ AI...")
-    
-    pending_list = get_pending_predictions()
-    
+    print("🕵️‍♂️ เริ่มตรวจสอบผลการทำนายของ AI (เฉพาะที่ครบ time_horizon_days แล้ว)...")
+
+    pending_list = get_due_predictions()
+
     if not pending_list:
-        print("✅ ไม่มีรายการค้างตรวจ")
+        print("✅ ไม่มีรายการที่ครบกรอบเวลาให้ตรวจตอนนี้")
         return
 
     verified_count = 0
