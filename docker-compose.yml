@@ -1,0 +1,17 @@
+services:
+  investor-bot:
+    build: .
+    container_name: investor-bot
+    restart: always
+    env_file:
+      - .env
+    networks:
+      - postgresql-server_default
+    volumes:
+      - ./target_ticker.txt:/app/target_ticker.txt
+
+# เชื่อมกับ network ของ my-postgres ที่มีอยู่แล้ว (DB_HOST=my-postgres ใน .env)
+# เพื่อให้คุยกัน DB ผ่าน internal docker network แทน Tailscale/public IP
+networks:
+  postgresql-server_default:
+    external: true
