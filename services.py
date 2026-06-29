@@ -8,6 +8,8 @@ from db_handler import get_accuracy_stats, get_learning_examples
 from get_fundamentals import get_fundamental_context, get_fundamental_signal_score
 from get_macro import get_macro_context, get_macro_signal_score
 from signal_engine import compute_confluence, get_news_sentiment_score
+from get_social_buzz import get_stocktwits_sentiment_score, get_social_buzz_context
+from get_dilution_risk import get_dilution_risk_score, get_dilution_context
 
 # สามารถเลือก import ค่าย AI ที่ต้องการใช้
 import google.generativeai as genai
@@ -250,12 +252,17 @@ def analyze_content(source_type, topic, content_data, market_context=""):
         fundamental_score = get_fundamental_signal_score(topic)
         macro_score = get_macro_signal_score()
         news_score = get_news_sentiment_score(content_data)
+        social_score = get_stocktwits_sentiment_score(topic)
+        social_info = get_social_buzz_context(topic)
+        dilution_score = get_dilution_risk_score(topic)
+        dilution_info = get_dilution_context(topic)
 
-        confluence = compute_confluence(technical_score, fundamental_score, macro_score, news_score)
+        confluence = compute_confluence(technical_score, fundamental_score, macro_score, news_score,
+                                         social_score, dilution_score)
     else:
         # TWEET: ยังไม่รู้ ticker ที่แท้จริงจนกว่า AI จะระบุ specific_stock กลับมา
         # จึงคำนวณ confluence แบบ deterministic ก่อนเรียกไม่ได้ ปล่อยให้ AI ประเมินเอง
-        technical_info, fundamental_info = "N/A", "N/A"
+        technical_info, fundamental_info, social_info, dilution_info = "N/A", "N/A", "N/A", "N/A"
 
     # 1. ดึงข้อมูลการเรียนรู้ (Feedback Loop)
     try:
@@ -341,9 +348,15 @@ def analyze_content(source_type, topic, content_data, market_context=""):
         [FUNDAMENTALS] (For {topic})
         {fundamental_info}
 
+        [SOCIAL BUZZ] (For {topic}, StockTwits)
+        {social_info}
+
+        [DILUTION RISK] (For {topic}, SEC EDGAR filings)
+        {dilution_info}
+
         [COMPUTED CONFLUENCE SIGNAL] (deterministic, calculated from the data above before you were asked)
         {chr(10).join(confluence['breakdown'])}
-        Net Score: {confluence['total']:+d} | Bias: {confluence['direction']} | Agreement: {confluence['confluence_count']}/4 categories
+        Net Score: {confluence['total']:+d} | Bias: {confluence['direction']} | Agreement: {confluence['confluence_count']}/6 categories
 
         Task: Analyze news for ticker: {topic}
         [NEWS]

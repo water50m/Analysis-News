@@ -86,7 +86,7 @@ def run_news_bot():
                 direction_emoji = "📈" if analysis.get('predicted_direction') == "UP" else "📉"
                 msg = f"📰 ข่าวหุ้น: {ticker}\n"
                 msg += f"🔮 AI ทาย: {analysis.get('predicted_direction')} {direction_emoji}\n"
-                msg += f"🔥 ความแรง: {score}/10 (Confluence {analysis.get('confluence_count', 'N/A')}/4)\n"
+                msg += f"🔥 ความแรง: {score}/10 (Confluence {analysis.get('confluence_count', 'N/A')}/6)\n"
                 msg += f"💰 ราคา: ${current_price}\n"
                 msg += f"🎯 เป้าหมาย: ${analysis.get('target_price', 'N/A')} | 🛑 ตัดขาดทุน: ${analysis.get('stop_loss_price', 'N/A')}\n"
                 msg += f"⏱️ กรอบเวลา: {analysis.get('time_horizon_days', 'N/A')} วัน\n"

@@ -84,6 +84,42 @@ def get_analyst_recommendation(ticker):
             f"StrongBuy={latest.get('strongBuy', 0)} StrongSell={latest.get('strongSell', 0)}")
 
 
+def get_float_data(ticker):
+    """ดึง shares outstanding + float (ล้านหุ้น) จาก Finnhub — float ต่ำ = ขยับรุนแรงกว่าด้วยแรงซื้อเท่ากัน"""
+    data = _finnhub_get("stock/profile2", {"symbol": ticker})
+    if not data or "floatingShare" not in data:
+        return None
+    return {
+        "shares_outstanding_m": data.get("shareOutstanding"),
+        "float_m": data.get("floatingShare"),
+    }
+
+
+def get_float_context(ticker):
+    """string สำหรับใส่ใน prompt AI"""
+    info = get_float_data(ticker)
+    if not info or info["float_m"] is None:
+        return "Float: N/A"
+    return f"Float: {info['float_m']:.1f}M shares (Shares Outstanding: {info['shares_outstanding_m']:.1f}M)"
+
+
+def get_float_momentum_multiplier(ticker):
+    """แปลง float เป็นตัวคูณ momentum score (ไม่ใช่ direction — float ไม่บอกขึ้น/ลง
+    แค่บอกว่า 'ขยับแรงได้ง่ายแค่ไหน') ใช้ใน screener ตอนจัดอันดับหุ้นซิ่ง"""
+    info = get_float_data(ticker)
+    if not info or info["float_m"] is None:
+        return 1.0
+
+    float_m = info["float_m"]
+    if float_m < 20:
+        return 1.5    # float ต่ำมาก (<20M) ขยับแรงง่ายสุด
+    if float_m < 50:
+        return 1.2
+    if float_m < 150:
+        return 1.0
+    return 0.8        # float สูง (>150M) ขยับยากกว่า ลดน้ำหนักลง
+
+
 def get_fundamental_signal_score(ticker):
     """แปลง insider activity + analyst rating เป็นคะแนนสัญญาณ (-2..+2) สำหรับ confluence scoring"""
     if not ticker or ticker == "GENERAL" or not FINNHUB_API_KEY:
@@ -122,6 +158,7 @@ def get_fundamental_context(ticker):
 
     lines = [
         get_fundamentals(ticker),
+        get_float_context(ticker),
         get_earnings_calendar(ticker),
         get_insider_sentiment(ticker),
         get_analyst_recommendation(ticker),

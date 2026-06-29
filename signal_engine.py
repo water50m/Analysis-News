@@ -24,11 +24,13 @@ def get_news_sentiment_score(content_data):
     return max(-2, min(2, round(avg * 2)))
 
 
-def compute_confluence(technical_score, fundamental_score, macro_score, news_score):
-    """รวมคะแนนจาก 4 หมวด (แต่ละหมวด -2..+2) เป็นสัญญาณเดียว
+def compute_confluence(technical_score, fundamental_score, macro_score, news_score,
+                        social_score=0, dilution_score=0):
+    """รวมคะแนนจากหลายหมวดเป็นสัญญาณเดียว (หมวดส่วนใหญ่ -2..+2, ยกเว้น Dilution Risk ที่เป็น -2..0
+    เพราะการยื่นเอกสารเพิ่มทุนไม่มีทางเป็นสัญญาณบวก แค่ 'ไม่เสี่ยง' (0) หรือ 'เสี่ยง' (ลบ) เท่านั้น)
 
     Returns dict:
-        total: ผลรวม (-8..+8)
+        total: ผลรวมทุกหมวด
         direction: UP/DOWN/NEUTRAL ตามเครื่องหมายของ total
         strength: ความแรงของสัญญาณ สเกล 0-10 (สำหรับใช้แทน impact_score เดิม)
         confluence_count: จำนวนหมวดที่เห็นตรงทิศทางเดียวกับ total (ไม่นับหมวดที่เป็น 0)
@@ -39,6 +41,8 @@ def compute_confluence(technical_score, fundamental_score, macro_score, news_sco
         "Fundamental": fundamental_score,
         "Macro": macro_score,
         "News Sentiment": news_score,
+        "Social Buzz": social_score,
+        "Dilution Risk": dilution_score,
     }
 
     total = sum(components.values())
@@ -47,7 +51,7 @@ def compute_confluence(technical_score, fundamental_score, macro_score, news_sco
     sign = 1 if total > 0 else -1 if total < 0 else 0
     confluence_count = sum(1 for v in components.values() if v != 0 and (v > 0) == (sign > 0))
 
-    strength = min(10, round(abs(total) / 8 * 10))
+    strength = min(10, round(abs(total)))
 
     breakdown = []
     for name, value in components.items():
