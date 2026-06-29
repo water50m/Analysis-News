@@ -4,6 +4,7 @@ psycopg2-binary
 yfinance
 pandas
 apscheduler
+flask
 
 # สามารเลือกใช้ อันใดอันหนึ่งได้ตามต้องการ
 google-generativeai>=0.4.0
