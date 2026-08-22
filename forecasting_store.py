@@ -247,3 +247,24 @@ def get_latest_watchlist_states() -> list[dict]:
         return []
     finally:
         release_connection(conn)
+
+
+def get_dashboard_watchlist() -> list[dict]:
+    """Return the latest evidence, metrics, and macro context for the web dashboard."""
+    conn = get_connection()
+    if not conn:
+        return []
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT DISTINCT ON (ticker)
+                    ticker, theme, signal_score, state, captured_at, metrics, macro_metrics
+                FROM forecasting_snapshots
+                ORDER BY ticker, captured_at DESC
+            """)
+            return [_json_safe(dict(row)) for row in cur.fetchall()]
+    except Exception as exc:
+        print(f"⚠️ Dashboard watchlist query failed: {exc}")
+        return []
+    finally:
+        release_connection(conn)

@@ -15,12 +15,16 @@ import json
 import time
 
 import pandas as pd
-from flask import Flask, request, abort
+from flask import Flask, request, abort, jsonify, send_from_directory
 from dotenv import load_dotenv
 
 from services import send_line_push, IMPACT_THRESHOLD
 from db_handler import get_accuracy_stats, get_due_predictions
-from forecasting_store import get_forecast_statistics, get_latest_watchlist_states
+from forecasting_store import (
+    get_dashboard_watchlist,
+    get_forecast_statistics,
+    get_latest_watchlist_states,
+)
 from screener import update_target_tickers
 from get_news import run_news_bot
 from event_tracker import run as run_event_tracker
@@ -35,6 +39,7 @@ ALLOWED_LINE_USER_IDS = {
 # Keep certificate validation on by default.  Some managed networks inject a
 # private TLS certificate; only that deployment should explicitly opt out.
 LINE_TLS_VERIFY = os.getenv("LINE_TLS_VERIFY", "true").strip().lower() not in {"0", "false", "no"}
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(__name__)
 
@@ -167,6 +172,9 @@ def handle_command(text, reply_token):
     elif text == "/test":
         reply(reply_token, "✅ LINE webhook ทำงานแล้ว — พิมพ์ /watchlist หรือ /status ได้")
 
+    elif text == "/dashboard":
+        reply(reply_token, "📊 Dashboard: https://line-con.gotzillax.online/dashboard")
+
     elif text == "/help":
         reply(reply_token,
               "คำสั่งที่ใช้ได้:\n"
@@ -174,6 +182,7 @@ def handle_command(text, reply_token):
               "/status - เช็คสถานะและสถิติ\n"
               "/watchlist - ดูสัญญาณล่าสุดของ 20 หุ้น\n"
               "/analyze - ดึงราคาและวิเคราะห์สัญญาณ 20 หุ้นทันที\n"
+              "/dashboard - เปิด Dashboard แบบการ์ดและกราฟ\n"
               "/test - ทดสอบการเชื่อมต่อ LINE\n"
               "/help - แสดงคำสั่งทั้งหมด")
 
@@ -214,6 +223,17 @@ def callback():
 @app.route("/health", methods=["GET"])
 def health():
     return "OK", 200
+
+
+@app.route("/dashboard", methods=["GET"])
+def dashboard():
+    return send_from_directory(BASE_DIR, "dashboard.html")
+
+
+@app.route("/api/dashboard/latest", methods=["GET"])
+def dashboard_latest():
+    rows = get_dashboard_watchlist()
+    return jsonify({"watchlist": rows, "count": len(rows)})
 
 
 if __name__ == "__main__":

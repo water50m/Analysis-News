@@ -41,6 +41,14 @@ class TestLineWebhookCommands(unittest.TestCase):
         self.assertIn("KGC", text)
         self.assertIn("BCS", text)
 
+    @patch("line_webhook.get_dashboard_watchlist")
+    def test_dashboard_api_returns_latest_rows(self, mock_rows):
+        mock_rows.return_value = [{"ticker": "KGC", "metrics": {"close": 20}}]
+        response = line_webhook.app.test_client().get("/api/dashboard/latest")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["count"], 1)
+        self.assertEqual(response.get_json()["watchlist"][0]["ticker"], "KGC")
+
 
 if __name__ == "__main__":
     unittest.main()
