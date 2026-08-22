@@ -1,0 +1,207 @@
+{
+  "as_of": "2026-08-22",
+  "purpose": "Research watchlist only. It is not a buy list or an automated-trading instruction.",
+  "horizon_days": 30,
+  "universe": [
+    {
+      "ticker": "KGC",
+      "company": "Kinross Gold",
+      "country": "Canada",
+      "theme": "gold",
+      "thesis": "Profitable senior gold producer. The near-term thesis depends on bullion, real yields, the US dollar and delivery versus cost guidance.",
+      "catalysts": ["US inflation and labour data", "FOMC decision", "gold price and ETF flows", "next earnings / production update"],
+      "risks": ["higher real yields", "stronger US dollar", "fuel and labour cost inflation", "mine execution"],
+      "source_url": "https://www.kinross.com/English/news-and-investors/news-releases/press-release-details/2026/Kinross-reports-strong-2026-second-quarter-results/default.aspx"
+    },
+    {
+      "ticker": "AGI",
+      "company": "Alamos Gold",
+      "country": "Canada",
+      "theme": "gold",
+      "thesis": "Gold producer with internal growth projects. Track bullion versus all-in sustaining costs and delivery of the Island Gold expansion.",
+      "catalysts": ["US inflation and labour data", "FOMC decision", "gold price and ETF flows", "Island Gold operating updates"],
+      "risks": ["higher real yields", "stronger US dollar", "lower production guidance", "cost inflation"],
+      "source_url": "https://www.alamosgold.com/news-and-events/news/news-details/2026/Alamos-Gold-Reports-Second-Quarter-2026-Results/"
+    },
+    {
+      "ticker": "GFI",
+      "company": "Gold Fields ADR",
+      "country": "South Africa",
+      "theme": "gold",
+      "thesis": "Senior gold producer used to compare gold-price sensitivity and operational execution with the Canadian producers.",
+      "catalysts": ["gold price and ETF flows", "US inflation data", "production update"],
+      "risks": ["higher real yields", "stronger US dollar", "cost and country risk"],
+      "source_url": "https://www.goldfields.com/financial-results.php"
+    },
+    {
+      "ticker": "HMY",
+      "company": "Harmony Gold ADR",
+      "country": "South Africa",
+      "theme": "gold",
+      "thesis": "Higher-volatility gold producer used as a secondary signal for gold-miner risk appetite, not as a substitute for quality screening.",
+      "catalysts": ["gold price", "South African operating data", "production update"],
+      "risks": ["higher real yields", "operational disruption", "currency and country risk"],
+      "source_url": "https://www.harmony.co.za/investors/reporting/"
+    },
+    {
+      "ticker": "OVV",
+      "company": "Ovintiv",
+      "country": "Canada",
+      "theme": "energy",
+      "thesis": "Cash-generative North American oil and gas producer. The near-term thesis depends on crude and natural-gas prices, production delivery and capital-return execution.",
+      "catalysts": ["Hormuz / Middle East de-escalation headlines", "weekly US petroleum inventory data", "OPEC+ supply decisions", "next earnings / guidance update"],
+      "risks": ["rapid oil-price decline", "weak natural-gas prices", "production miss", "cost inflation"],
+      "source_url": "https://investor.ovintiv.com/2026-07-23-Ovintiv-Reports-Second-Quarter-2026-Financial-and-Operating-Results"
+    },
+    {
+      "ticker": "PBR",
+      "company": "Petrobras ADR",
+      "country": "Brazil",
+      "theme": "energy",
+      "thesis": "Large cash-generative oil producer with a low nominal share price. Oil is the main market driver; Brazilian state-policy, capital allocation and dividend policy are separate risks.",
+      "catalysts": ["Hormuz / Middle East de-escalation headlines", "oil-price changes", "Brazil policy and fuel-pricing announcements", "earnings and dividend decision"],
+      "risks": ["rapid oil-price decline", "state intervention", "currency risk", "capital-allocation change"],
+      "source_url": "https://agencia.petrobras.com.br/w/negocio/petrobras-lucra-r-52-4-bilh%C3%B5es-no-segundo-trimestre-de-2026"
+    },
+    {
+      "ticker": "CNQ",
+      "company": "Canadian Natural Resources",
+      "country": "Canada",
+      "theme": "energy",
+      "thesis": "Large Canadian producer used to compare oil-price sensitivity, free cash flow and capital-return execution across North American energy.",
+      "catalysts": ["oil and natural-gas prices", "OPEC+ decisions", "earnings and capital-return update"],
+      "risks": ["oil-price decline", "Canadian policy risk", "cost inflation"],
+      "source_url": "https://www.cnrl.com/investors/financial-information/"
+    },
+    {
+      "ticker": "FTI",
+      "company": "TechnipFMC",
+      "country": "United Kingdom",
+      "theme": "energy",
+      "thesis": "Subsea-services company with backlog exposure. It can react to offshore project orders rather than spot oil alone.",
+      "catalysts": ["subsea order awards", "oil-price trend", "quarterly backlog update"],
+      "risks": ["project delays", "lower oil capex", "Middle East disruption"],
+      "source_url": "https://www.technipfmc.com/en/investors/financial-news-releases/press-release/technipfmc-announces-second-quarter-2026-results/"
+    },
+    {
+      "ticker": "VALE",
+      "company": "Vale ADR",
+      "country": "Brazil",
+      "theme": "metals",
+      "thesis": "Diversified iron-ore, copper and nickel producer. The near-term thesis depends on Chinese industrial demand, iron-ore and copper prices, volumes and Brazilian-real movements.",
+      "catalysts": ["China industrial and property data", "iron ore and copper prices", "Chinese stimulus announcements", "next earnings / production report"],
+      "risks": ["weak China demand", "commodity-price decline", "Brazil policy / currency risk", "operational disruption"],
+      "source_url": "https://vale.com/confira-os-resultados-financeiros-do-2t26"
+    },
+    {
+      "ticker": "TECK",
+      "company": "Teck Resources",
+      "country": "Canada",
+      "theme": "metals",
+      "thesis": "Diversified base-metals producer used to monitor copper demand, China-sensitive industrial activity and mine execution.",
+      "catalysts": ["copper price", "China stimulus", "production update"],
+      "risks": ["weak China demand", "commodity decline", "mine execution"],
+      "source_url": "https://www.teck.com/investors/financial-reports/"
+    },
+    {
+      "ticker": "BHP",
+      "company": "BHP Group ADR",
+      "country": "Australia",
+      "theme": "metals",
+      "thesis": "Global miner used as a liquid read-through for iron ore, copper and China-linked industrial demand.",
+      "catalysts": ["China data", "iron-ore and copper prices", "production report"],
+      "risks": ["weak China demand", "commodity-price decline", "country risk"],
+      "source_url": "https://www.bhp.com/investors/results-reports-and-presentations"
+    },
+    {
+      "ticker": "FCX",
+      "company": "Freeport-McMoRan",
+      "country": "United States",
+      "theme": "metals",
+      "thesis": "Copper-focused miner used as a high-liquidity signal for industrial demand and copper-price momentum.",
+      "catalysts": ["copper price", "China demand", "production report"],
+      "risks": ["copper-price decline", "mine disruption", "country risk"],
+      "source_url": "https://investors.fcx.com/investors/financial-information/default.aspx"
+    },
+    {
+      "ticker": "UBS",
+      "company": "UBS Group ADR",
+      "country": "Switzerland",
+      "theme": "financials",
+      "thesis": "Global wealth manager and bank used to monitor European financial conditions and risk sentiment.",
+      "catalysts": ["central-bank decisions", "wealth-management inflows", "earnings"],
+      "risks": ["credit stress", "rate volatility", "regulatory change"],
+      "source_url": "https://www.ubs.com/global/en/investor-relations.html"
+    },
+    {
+      "ticker": "BCS",
+      "company": "Barclays ADR",
+      "country": "United Kingdom",
+      "theme": "financials",
+      "thesis": "UK bank used to monitor rate expectations, credit quality and European risk appetite.",
+      "catalysts": ["Bank of England policy", "credit data", "earnings"],
+      "risks": ["credit losses", "rate cuts", "UK macro weakness"],
+      "source_url": "https://home.barclays/investor-relations/"
+    },
+    {
+      "ticker": "IBN",
+      "company": "ICICI Bank ADR",
+      "country": "India",
+      "theme": "financials",
+      "thesis": "Indian private-sector bank used to diversify financial exposure away from the US and Europe.",
+      "catalysts": ["India credit growth", "RBI policy", "earnings"],
+      "risks": ["asset-quality deterioration", "currency risk", "India valuation risk"],
+      "source_url": "https://www.icicibank.com/about-us/investor-relations"
+    },
+    {
+      "ticker": "STM",
+      "company": "STMicroelectronics ADR",
+      "country": "Switzerland/France",
+      "theme": "semiconductors",
+      "thesis": "European semiconductor producer exposed to industrial and automotive demand; useful for detecting a cyclical recovery or slowdown.",
+      "catalysts": ["semiconductor sector data", "auto/industrial demand", "earnings guidance"],
+      "risks": ["inventory correction", "weak auto demand", "margin pressure"],
+      "source_url": "https://investors.st.com/"
+    },
+    {
+      "ticker": "UMC",
+      "company": "United Microelectronics ADR",
+      "country": "Taiwan",
+      "theme": "semiconductors",
+      "thesis": "Foundry exposure offers a lower-priced watchlist proxy for demand, utilisation and Taiwan technology risk.",
+      "catalysts": ["foundry utilisation", "chip demand", "Taiwan export data"],
+      "risks": ["chip oversupply", "pricing pressure", "geopolitical risk"],
+      "source_url": "https://www.umc.com/en/InvestorServices/financial_information"
+    },
+    {
+      "ticker": "ON",
+      "company": "onsemi",
+      "country": "United States",
+      "theme": "semiconductors",
+      "thesis": "Automotive and industrial semiconductor exposure used to compare the AI-led chip cycle with the broader real-economy chip cycle.",
+      "catalysts": ["auto demand", "semiconductor inventory data", "earnings guidance"],
+      "risks": ["inventory correction", "EV demand weakness", "margin pressure"],
+      "source_url": "https://investor.onsemi.com/"
+    },
+    {
+      "ticker": "KBR",
+      "company": "KBR",
+      "country": "United States",
+      "theme": "industrials",
+      "thesis": "Government-services and engineering company used to monitor infrastructure, defence and project-services demand.",
+      "catalysts": ["government contract awards", "infrastructure spending", "earnings backlog update"],
+      "risks": ["contract delay", "cost overrun", "budget uncertainty"],
+      "source_url": "https://investors.kbr.com/"
+    },
+    {
+      "ticker": "FLS",
+      "company": "Flowserve",
+      "country": "United States",
+      "theme": "industrials",
+      "thesis": "Industrial-flow-control company used to monitor energy, water and general industrial capital spending.",
+      "catalysts": ["industrial orders", "energy capex", "earnings backlog update"],
+      "risks": ["order slowdown", "margin pressure", "project delay"],
+      "source_url": "https://ir.flowserve.com/"
+    }
+  ]
+}

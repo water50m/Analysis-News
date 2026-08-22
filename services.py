@@ -12,7 +12,6 @@ from get_social_buzz import get_stocktwits_sentiment_score, get_social_buzz_cont
 from get_dilution_risk import get_dilution_risk_score, get_dilution_context
 
 # สามารถเลือก import ค่าย AI ที่ต้องการใช้
-import google.generativeai as genai
 from openai import OpenAI
 import anthropic
 
@@ -22,15 +21,13 @@ load_dotenv()
 AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").lower()
 ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_GROUP_ID = os.getenv("LINE_GROUP_ID")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 IMPACT_THRESHOLD = 5
-
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 BASE_URL = os.getenv("BASE_URL") # เผื่อใช้ DeepSeek
@@ -72,20 +69,49 @@ def call_claude(prompt):
         return None
 
 def call_gemini(prompt):
-    """เรียกใช้ Google Gemini"""
-    models = ['models/gemini-2.5-pro',  'models/gemini-1.5-pro', 'models/gemini-2.0-flash', 'models/gemini-1.5-flash']
-    
-    for model_name in models:
-        try:
-            model = genai.GenerativeModel(model_name)
-            res = model.generate_content(
-                prompt, 
-                generation_config={"response_mime_type": "application/json"}
-            )
-            return json.loads(res.text)
-        except:
-            continue
-    return None
+    """เรียก Gemini REST API รุ่นปัจจุบันและคืน JSON ที่ตรวจสอบได้
+
+    โค้ดเดิมใช้ google-generativeai ซึ่งเลิกสนับสนุนแล้ว และกลืน exception
+    ทุกกรณี ทำให้ key/model ที่มีปัญหาดูเหมือนระบบเงียบหรือค้างได้ง่าย.
+    """
+    if not GEMINI_API_KEY:
+        print("❌ Gemini Error: GEMINI_API_KEY is not configured")
+        return None
+
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{GEMINI_MODEL}:generateContent"
+    )
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "temperature": 0.2,
+        },
+    }
+    try:
+        response = requests.post(
+            url,
+            params={"key": GEMINI_API_KEY},
+            json=payload,
+            timeout=30,
+        )
+        if not response.ok:
+            detail = response.json().get("error", {}).get("message", response.text)
+            print(f"❌ Gemini Error ({response.status_code}): {detail[:300]}")
+            return None
+
+        data = response.json()
+        candidates = data.get("candidates", [])
+        parts = candidates[0].get("content", {}).get("parts", []) if candidates else []
+        text = parts[0].get("text", "") if parts else ""
+        if not text:
+            print("❌ Gemini Error: response contained no text candidate")
+            return None
+        return json.loads(text)
+    except (requests.RequestException, ValueError, KeyError, IndexError) as e:
+        print(f"❌ Gemini Error: {type(e).__name__}: {e}")
+        return None
 
 def call_openai(prompt):
     """เรียกใช้ OpenAI (GPT-4o) หรือ DeepSeek"""

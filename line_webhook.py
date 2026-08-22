@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 
 from services import send_line_push, IMPACT_THRESHOLD
 from db_handler import get_accuracy_stats, get_due_predictions
+from forecasting_store import get_forecast_statistics, get_latest_watchlist_states
 from screener import update_target_tickers
 from get_news import run_news_bot
 
@@ -71,16 +72,37 @@ def handle_command(text, reply_token):
         total, correct = get_accuracy_stats()
         acc = (correct / total * 100) if total > 0 else 0
         pending = len(get_due_predictions())
+        forecast_stats = get_forecast_statistics()
         reply(reply_token,
-              f"📊 ความแม่นยำสะสม: {acc:.1f}% ({correct}/{total})\n"
-              f"⏳ รอครบกรอบเวลาตรวจ: {pending} รายการ\n"
-              f"🎯 Impact Threshold: {IMPACT_THRESHOLD}")
+              f"📊 บอทข่าวเดิม: {acc:.1f}% ({correct}/{total})\n"
+              f"⏳ รอตรวจบอทข่าว: {pending} รายการ\n"
+              f"📈 Watchlist forecast: {forecast_stats['total']} รายการที่ตรวจแล้ว\n"
+              f"🎯 Impact Threshold: {IMPACT_THRESHOLD}\n"
+              "พิมพ์ /watchlist เพื่อดู 20 หุ้นล่าสุด")
+
+    elif text == "/watchlist":
+        states = get_latest_watchlist_states()
+        if not states:
+            reply(reply_token, "⚠️ ยังไม่มี snapshot watchlist หรือเชื่อมต่อ Forecast DB ไม่ได้")
+            return
+
+        lines = ["📈 Fundamental Watchlist ล่าสุด"]
+        for item in states:
+            state = item["state"].split(":", 1)[0]
+            lines.append(f"{item['ticker']} [{item['theme']}] score {item['signal_score']:+d} — {state}")
+        lines.append("\nคำอธิบาย: เป็นสถานะหลักฐาน ไม่ใช่คำสั่งซื้อขาย")
+        reply(reply_token, "\n".join(lines))
+
+    elif text == "/test":
+        reply(reply_token, "✅ LINE webhook ทำงานแล้ว — พิมพ์ /watchlist หรือ /status ได้")
 
     elif text == "/help":
         reply(reply_token,
               "คำสั่งที่ใช้ได้:\n"
               "/scan - สแกนหุ้นซิ่งทันที + วิเคราะห์\n"
-              "/status - เช็คความแม่นยำ + รายการรอตรวจ\n"
+              "/status - เช็คสถานะและสถิติ\n"
+              "/watchlist - ดูสัญญาณล่าสุดของ 20 หุ้น\n"
+              "/test - ทดสอบการเชื่อมต่อ LINE\n"
               "/help - แสดงคำสั่งทั้งหมด")
 
     else:

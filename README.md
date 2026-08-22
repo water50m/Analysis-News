@@ -182,3 +182,19 @@ elif AI_PROVIDER == "claude":
 
 โปรเจกต์นี้จัดทำขึ้นเพื่อการศึกษาและการทดลองด้าน AI เท่านั้น
 ไม่ใช่คำแนะนำทางการเงิน ผู้ลงทุนควรใช้วิจารณญาณก่อนตัดสินใจลงทุน
+
+## 📊 Fundamental event watchlist
+
+`fundamental_watchlist.json` เป็น watchlist งานวิจัยสำหรับหุ้นต่างประเทศที่มีพื้นฐานและตัวเร่งราคา
+แยกจาก `watchlist_universe.txt` ซึ่งออกแบบมาสำหรับหุ้นโมเมนตัม/หุ้นซิ่งโดยเฉพาะ
+
+รันเพื่อเก็บ snapshot และสร้างรายงาน:
+
+```text
+py -3.11 event_tracker.py
+```
+
+ระบบจะบันทึกราคากับสัญญาณใน `data/fundamental_watchlist_snapshots.csv` และเขียน dashboard ล่าสุดที่
+`reports/fundamental_watchlist_latest.md` คะแนนเป็นเพียงหลักฐานประกอบ (`WATCH POSITIVE`, `MIXED`,
+`CAUTION`, หรือ `EXTENDED POSITIVE`) ไม่ใช่คำสั่งซื้อขาย; สถานะ `EXTENDED POSITIVE` ใช้เตือนว่าราคา
+ขึ้นแรงเกินกรอบ RSI ระยะสั้นและไม่ควรไล่ตามสัญญาณเดียว

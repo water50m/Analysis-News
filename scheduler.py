@@ -13,6 +13,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from screener import update_target_tickers, update_target_tickers_premarket
 from get_news import run_news_bot
 from verify_bot import run_verification
+from event_tracker import run as run_event_tracker
 
 NY_TZ = ZoneInfo("America/New_York")
 
@@ -78,6 +79,17 @@ def verify_job():
     run_verification()
 
 
+def watchlist_snapshot_job():
+    """เก็บหลักฐานของ fundamental watchlist 20 ตัวลง PostgreSQL.
+
+    ใช้ 3 รอบต่อวันสำหรับกลยุทธ์ถือ 1–2 เดือน: ก่อนเปิดตลาด, ระหว่างวัน
+    และหลังตลาดปิด. การเรียก Gemini จะถูกเพิ่มเฉพาะเมื่อ trigger เปลี่ยน
+    สถานะสำคัญ เพื่อหลีกเลี่ยงการตีความ noise ทุก snapshot.
+    """
+    print(f"\n📊 [{datetime.now(NY_TZ)}] เริ่มเก็บ fundamental watchlist snapshot...")
+    run_event_tracker()
+
+
 def main():
     scheduler = BlockingScheduler(timezone=NY_TZ)
 
@@ -108,10 +120,27 @@ def main():
         id="verify",
     )
 
+    for job_id, hour, minute, label in [
+        ("watchlist_preopen", 9, 20, "pre-open"),
+        ("watchlist_midday", 12, 20, "midday"),
+        ("watchlist_close", 16, 20, "after-close"),
+    ]:
+        scheduler.add_job(
+            watchlist_snapshot_job,
+            "cron",
+            hour=hour,
+            minute=minute,
+            day_of_week="mon-fri",
+            id=job_id,
+            max_instances=1,
+            coalesce=True,
+        )
+
     print("🚀 Scheduler started. กด Ctrl+C เพื่อหยุด")
     print(f"   - Scan & Analyze (regular hours): ทุก {SCAN_INTERVAL_MINUTES} นาที (09:30-16:00 ET)")
     print(f"   - Scan & Analyze (pre/after-market gap): ทุก {SCAN_INTERVAL_MINUTES} นาที (07:00-09:30, 16:00-20:00 ET)")
     print(f"   - Verify: ทุกวันจันทร์-ศุกร์ 18:00 ET")
+    print("   - Fundamental watchlist: 09:20, 12:20, 16:20 ET (Mon-Fri)")
 
     try:
         scheduler.start()
