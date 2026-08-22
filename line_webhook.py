@@ -23,9 +23,11 @@ from db_handler import get_accuracy_stats, get_due_predictions
 from forecasting_store import (
     get_dashboard_watchlist,
     get_forecast_statistics,
+    get_latest_checklist_backtests,
     get_latest_watchlist_states,
 )
 from screener import update_target_tickers
+from signal_checklist import evaluate_checklist
 from get_news import run_news_bot
 from event_tracker import run as run_event_tracker
 
@@ -233,6 +235,12 @@ def dashboard():
 @app.route("/api/dashboard/latest", methods=["GET"])
 def dashboard_latest():
     rows = get_dashboard_watchlist()
+    backtests = get_latest_checklist_backtests()
+    for row in rows:
+        row["checklist"] = evaluate_checklist(
+            row["theme"], row.get("metrics") or {}, row.get("macro_metrics") or {}
+        )
+        row["backtest"] = backtests.get(row["ticker"])
     return jsonify({"watchlist": rows, "count": len(rows)})
 
 

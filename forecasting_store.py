@@ -69,6 +69,23 @@ CREATE TABLE IF NOT EXISTS forecasting_errors (
 );
 CREATE INDEX IF NOT EXISTS forecasting_errors_prediction_idx
     ON forecasting_errors (prediction_id);
+
+CREATE TABLE IF NOT EXISTS checklist_backtests (
+    id BIGSERIAL PRIMARY KEY,
+    run_at TIMESTAMPTZ NOT NULL,
+    ticker TEXT NOT NULL,
+    signals_count INTEGER NOT NULL,
+    successful_signals INTEGER NOT NULL,
+    win_rate_pct NUMERIC(5,2),
+    average_forward_return_pct NUMERIC(8,3),
+    average_max_drawdown_pct NUMERIC(8,3),
+    horizon_days INTEGER NOT NULL,
+    target_return_pct NUMERIC(8,3) NOT NULL,
+    lookback_years INTEGER NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS checklist_backtests_ticker_run_idx
+    ON checklist_backtests (ticker, run_at DESC);
 """
 
 
@@ -266,5 +283,53 @@ def get_dashboard_watchlist() -> list[dict]:
     except Exception as exc:
         print(f"⚠️ Dashboard watchlist query failed: {exc}")
         return []
+    finally:
+        release_connection(conn)
+
+
+def save_checklist_backtest_results(results: list[dict]) -> bool:
+    if not results:
+        return False
+    conn = get_connection()
+    if not conn:
+        return False
+    try:
+        with conn, conn.cursor() as cur:
+            cur.executemany("""
+                INSERT INTO checklist_backtests (
+                    run_at, ticker, signals_count, successful_signals, win_rate_pct,
+                    average_forward_return_pct, average_max_drawdown_pct, horizon_days,
+                    target_return_pct, lookback_years
+                ) VALUES (%(run_at)s, %(ticker)s, %(signals_count)s, %(successful_signals)s,
+                          %(win_rate_pct)s, %(average_forward_return_pct)s,
+                          %(average_max_drawdown_pct)s, %(horizon_days)s,
+                          %(target_return_pct)s, %(lookback_years)s)
+            """, results)
+        return True
+    except Exception as exc:
+        print(f"⚠️ Checklist backtest save failed: {exc}")
+        return False
+    finally:
+        release_connection(conn)
+
+
+def get_latest_checklist_backtests() -> dict[str, dict]:
+    conn = get_connection()
+    if not conn:
+        return {}
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT DISTINCT ON (ticker)
+                    ticker, signals_count, successful_signals, win_rate_pct,
+                    average_forward_return_pct, average_max_drawdown_pct,
+                    horizon_days, target_return_pct, lookback_years, run_at
+                FROM checklist_backtests
+                ORDER BY ticker, run_at DESC
+            """)
+            return {row["ticker"]: _json_safe(dict(row)) for row in cur.fetchall()}
+    except Exception as exc:
+        print(f"⚠️ Checklist backtest query failed: {exc}")
+        return {}
     finally:
         release_connection(conn)

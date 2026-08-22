@@ -42,8 +42,12 @@ class TestLineWebhookCommands(unittest.TestCase):
         self.assertIn("BCS", text)
 
     @patch("line_webhook.get_dashboard_watchlist")
-    def test_dashboard_api_returns_latest_rows(self, mock_rows):
-        mock_rows.return_value = [{"ticker": "KGC", "metrics": {"close": 20}}]
+    @patch("line_webhook.get_latest_checklist_backtests")
+    def test_dashboard_api_returns_latest_rows(self, mock_backtests, mock_rows):
+        mock_backtests.return_value = {}
+        mock_rows.return_value = [{
+            "ticker": "KGC", "theme": "gold", "metrics": {"close": 20}, "macro_metrics": {},
+        }]
         response = line_webhook.app.test_client().get("/api/dashboard/latest")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["count"], 1)
