@@ -13,6 +13,7 @@ import hashlib
 import hmac
 import json
 
+import pandas as pd
 from flask import Flask, request, abort
 from dotenv import load_dotenv
 
@@ -21,6 +22,7 @@ from db_handler import get_accuracy_stats, get_due_predictions
 from forecasting_store import get_forecast_statistics, get_latest_watchlist_states
 from screener import update_target_tickers
 from get_news import run_news_bot
+from event_tracker import run as run_event_tracker
 
 load_dotenv()
 
@@ -67,6 +69,45 @@ def reply(reply_token, text):
         print(f"❌ LINE Reply Error: {e}")
 
 
+def format_immediate_analysis(snapshot: pd.DataFrame) -> str:
+    """Turn a fresh 20-stock snapshot into a short, evidence-only LINE reply."""
+    usable = snapshot[~snapshot["state"].astype(str).str.contains("DATA ERROR", na=False)].copy()
+    if usable.empty:
+        return "⚠️ ดึงข้อมูลราคาไม่สำเร็จในรอบนี้ ลอง /analyze อีกครั้งภายหลัง"
+
+    positive = usable[usable["signal_score"] >= 2].sort_values(
+        ["signal_score", "return_5d_pct"], ascending=False
+    )
+    caution = usable[usable["signal_score"] <= -2].sort_values(
+        ["signal_score", "return_5d_pct"]
+    )
+    mixed_count = len(usable) - len(positive) - len(caution)
+
+    def describe(row):
+        state = str(row["state"]).split(":", 1)[0]
+        return (
+            f"{row['ticker']} {row['return_5d_pct']:+.1f}% "
+            f"(RSI {row['rsi14']}, {state})"
+        )
+
+    lines = ["🔎 วิเคราะห์ทันที — ราคาและสัญญาณ 20 หุ้น"]
+    if not positive.empty:
+        lines.append("\n✅ เฝ้าดูเชิงบวก")
+        lines.extend(describe(row) for _, row in positive.head(5).iterrows())
+    else:
+        lines.append("\n✅ ยังไม่มีหุ้นที่คะแนนบวกเด่น (≥ +2)")
+
+    if not caution.empty:
+        lines.append("\n⚠️ ระวัง")
+        lines.extend(describe(row) for _, row in caution.head(5).iterrows())
+    else:
+        lines.append("\n⚠️ ยังไม่มีหุ้นที่คะแนนลบเด่น (≤ -2)")
+
+    lines.append(f"\n↔️ สัญญาณผสม: {mixed_count} หุ้น")
+    lines.append("เป็นสัญญาณวิจัย ไม่ใช่คำสั่งซื้อขาย | /watchlist ดูครบทุกตัว")
+    return "\n".join(lines)
+
+
 def handle_command(text, reply_token):
     text = text.strip().lower()
 
@@ -104,6 +145,14 @@ def handle_command(text, reply_token):
         lines.append("\nคำอธิบาย: เป็นสถานะหลักฐาน ไม่ใช่คำสั่งซื้อขาย")
         reply(reply_token, "\n".join(lines))
 
+    elif text == "/analyze":
+        try:
+            snapshot = run_event_tracker()
+            reply(reply_token, format_immediate_analysis(snapshot))
+        except Exception as exc:
+            print(f"❌ Immediate analysis error: {exc}")
+            reply(reply_token, "⚠️ วิเคราะห์ไม่สำเร็จในรอบนี้ ลอง /analyze อีกครั้งภายหลัง")
+
     elif text == "/test":
         reply(reply_token, "✅ LINE webhook ทำงานแล้ว — พิมพ์ /watchlist หรือ /status ได้")
 
@@ -113,6 +162,7 @@ def handle_command(text, reply_token):
               "/scan - สแกนหุ้นซิ่งทันที + วิเคราะห์\n"
               "/status - เช็คสถานะและสถิติ\n"
               "/watchlist - ดูสัญญาณล่าสุดของ 20 หุ้น\n"
+              "/analyze - ดึงราคาและวิเคราะห์สัญญาณ 20 หุ้นทันที\n"
               "/test - ทดสอบการเชื่อมต่อ LINE\n"
               "/help - แสดงคำสั่งทั้งหมด")
 
