@@ -12,6 +12,7 @@ import base64
 import hashlib
 import hmac
 import json
+import time
 
 import pandas as pd
 from flask import Flask, request, abort
@@ -55,18 +56,28 @@ def reply(reply_token, text):
         "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}",
     }
     payload = {"replyToken": reply_token, "messages": [{"type": "text", "text": text}]}
-    try:
-        response = requests.post(
-            url,
-            headers=headers,
-            json=payload,
-            timeout=10,
-            verify=LINE_TLS_VERIFY,
-        )
-        if not response.ok:
-            print(f"❌ LINE Reply Error: HTTP {response.status_code}")
-    except Exception as e:
-        print(f"❌ LINE Reply Error: {e}")
+    if not LINE_TLS_VERIFY:
+        requests.packages.urllib3.disable_warnings()
+
+    # The server's network intermittently closes outbound TLS connections to
+    # LINE. Retrying the same reply token is permitted while it remains valid.
+    for attempt in range(3):
+        try:
+            response = requests.post(
+                url,
+                headers=headers,
+                json=payload,
+                timeout=10,
+                verify=LINE_TLS_VERIFY,
+            )
+            if response.ok:
+                return True
+            print(f"❌ LINE Reply Error: HTTP {response.status_code} (attempt {attempt + 1}/3)")
+        except requests.RequestException as exc:
+            print(f"❌ LINE Reply Error: {exc} (attempt {attempt + 1}/3)")
+        if attempt < 2:
+            time.sleep(attempt + 1)
+    return False
 
 
 def format_immediate_analysis(snapshot: pd.DataFrame) -> str:
