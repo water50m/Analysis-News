@@ -29,6 +29,9 @@ LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 ALLOWED_LINE_USER_IDS = {
     uid.strip() for uid in os.getenv("ALLOWED_LINE_USER_IDS", "").split(",") if uid.strip()
 }
+# Keep certificate validation on by default.  Some managed networks inject a
+# private TLS certificate; only that deployment should explicitly opt out.
+LINE_TLS_VERIFY = os.getenv("LINE_TLS_VERIFY", "true").strip().lower() not in {"0", "false", "no"}
 
 app = Flask(__name__)
 
@@ -51,7 +54,15 @@ def reply(reply_token, text):
     }
     payload = {"replyToken": reply_token, "messages": [{"type": "text", "text": text}]}
     try:
-        requests.post(url, headers=headers, json=payload, timeout=10)
+        response = requests.post(
+            url,
+            headers=headers,
+            json=payload,
+            timeout=10,
+            verify=LINE_TLS_VERIFY,
+        )
+        if not response.ok:
+            print(f"❌ LINE Reply Error: HTTP {response.status_code}")
     except Exception as e:
         print(f"❌ LINE Reply Error: {e}")
 
