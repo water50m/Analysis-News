@@ -28,6 +28,8 @@ def run_study() -> dict:
     universe = load_watchlist()["universe"]
     tickers = [entry["ticker"] for entry in universe]
     frames = _frames(tickers + list(MACRO_TICKERS.values()))
+    if not any(ticker in frames and not frames[ticker].empty for ticker in tickers):
+        raise RuntimeError("Historical market data is unavailable; study was not calculated.")
     macro = _macro_metrics(frames)
     event_checks, baseline_checks = Counter(), Counter()
     events, baseline = [], 0
